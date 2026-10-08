@@ -1,4 +1,4 @@
-package br.ifsp.pousada;
+package br.ifsp.guesthouse;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

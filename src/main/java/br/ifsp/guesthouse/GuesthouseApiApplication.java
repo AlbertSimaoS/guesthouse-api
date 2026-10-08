@@ -1,13 +1,13 @@
-package br.ifsp.pousada;
+package br.ifsp.guesthouse;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class PousadaApiApplication {
+public class GuesthouseApiApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(PousadaApiApplication.class, args);
+		SpringApplication.run(GuesthouseApiApplication.class, args);
 	}
 
 }
