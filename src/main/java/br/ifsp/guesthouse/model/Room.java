@@ -8,11 +8,16 @@ public class Room {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, unique = true)
     private String number;
 
     @ManyToOne
     @JoinColumn(name = "room_type_id")
     private RoomType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private RoomStatus status = RoomStatus.AVAILABLE;
 
     public Long getId() {
