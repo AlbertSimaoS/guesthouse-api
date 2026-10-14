@@ -3,12 +3,13 @@ package br.ifsp.guesthouse.controller;
 
 import br.ifsp.guesthouse.dto.LoginRequestDTO;
 import br.ifsp.guesthouse.dto.LoginResponseDTO;
-import br.ifsp.guesthouse.dto.UserRegistrationDTO;
+import br.ifsp.guesthouse.dto.UserRequestDTO;
 import br.ifsp.guesthouse.dto.UserResponseDTO;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.service.AuthService;
 import br.ifsp.guesthouse.service.JwtService;
 import br.ifsp.guesthouse.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Autenticação", description = "Operações relacionadas a autenticação dos usuários")
 public class AuthController {
-
     private final AuthService authService;
     private final JwtService jwtService;
     private final UserService userService;
@@ -32,7 +33,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDTO> register(@Valid @RequestBody UserRegistrationDTO dto) {
+    public ResponseEntity<UserResponseDTO> register(@Valid @RequestBody UserRequestDTO dto) {
         UserAccount user = userService.register(dto);
 
         UserResponseDTO response = UserResponseDTO.fromEntity(user);

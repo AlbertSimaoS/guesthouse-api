@@ -1,7 +1,7 @@
 
 package br.ifsp.guesthouse.service;
 
-import br.ifsp.guesthouse.dto.UserRegistrationDTO;
+import br.ifsp.guesthouse.dto.UserRequestDTO;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.Profile;
 import br.ifsp.guesthouse.repository.UserAccountRepository;
@@ -21,7 +21,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserAccount register(UserRegistrationDTO dto) {
+    public UserAccount register(UserRequestDTO dto) {
         if (userRepository.existsByEmail(dto.email())) {
             throw new IllegalArgumentException(
                     "Email already registered");

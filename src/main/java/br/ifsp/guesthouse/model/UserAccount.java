@@ -6,7 +6,6 @@ import jakarta.validation.constraints.*;
 
  @Entity
 public class UserAccount {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
-
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
 
