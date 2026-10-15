@@ -52,7 +52,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/room-types/register",
-                                "/room/register"
+                            "/room/register",
+                                "/season/register"
                         ).hasRole("RECEPTION")
 
                         .anyRequest().authenticated()
