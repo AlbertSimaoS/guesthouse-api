@@ -39,8 +39,14 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                HttpMethod.POST,
                                 "/auth/register",
                                 "/auth/login"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/room/availability"
                         ).permitAll()
 
                         .requestMatchers(
@@ -52,7 +58,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/room-types/register",
-                            "/room/register",
+                                "/room/register",
                                 "/season/register"
                         ).hasRole("RECEPTION")
 

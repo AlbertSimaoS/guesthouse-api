@@ -1,18 +1,15 @@
 package br.ifsp.guesthouse.controller;
 
-import br.ifsp.guesthouse.dto.RoomRequestDTO;
-import br.ifsp.guesthouse.dto.RoomResponseDTO;
+import br.ifsp.guesthouse.dto.*;
 import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.service.RoomService;
 import br.ifsp.guesthouse.service.RoomTypeService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/room")
@@ -31,5 +28,15 @@ public class RoomController {
         return  ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @GetMapping("/availability")
+    public ResponseEntity<PageResponseDTO<RoomAvailabilityResponseDTO>> findAvailableRooms(
+            @Valid @ModelAttribute RoomAvailabilityRequestDTO request,
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                roomService.findAvailableRooms(request, pageable)
+        );
     }
 }

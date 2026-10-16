@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 public interface SeasonRepository extends JpaRepository<Season, Long> {
     boolean existsByNameIgnoreCase(String name);
@@ -20,5 +21,10 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
     boolean existsOverlappingSeason(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
+    );
+
+    Optional<Season> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            LocalDate dateForStart,
+            LocalDate dateForEnd
     );
 }
