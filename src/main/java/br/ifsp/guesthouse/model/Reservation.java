@@ -1,8 +1,20 @@
 package br.ifsp.guesthouse.model;
 
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,39 +27,38 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull
+    @NotNull(message = "Room is required")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
-    @NotNull
+    @NotNull(message = "Guest is required")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_account_id", nullable = false)
     private UserAccount guest;
 
-    @NotNull
+    @NotNull(message = "Check-in date is required")
     @Column(name = "check_in", nullable = false)
     private LocalDate checkIn;
 
-    @NotNull
+    @NotNull(message = "Check-out date is required")
     @Column(name = "check_out", nullable = false)
     private LocalDate checkOut;
 
-    @NotNull
+    @NotNull(message = "Number of guests is required")
+    @Positive(message = "Number of guests must be positive")
     @Column(name = "number_of_guests", nullable = false)
     private Integer numberOfGuests;
 
-    @NotNull
+    @NotNull(message = "Total price is required")
+    @PositiveOrZero(message = "Total price cannot be negative")
     @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
+    @NotNull(message = "Reservation status is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReservationStatus status = ReservationStatus.PENDING;
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Reservation() {
     }

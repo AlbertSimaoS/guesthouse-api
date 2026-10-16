@@ -1,31 +1,54 @@
 package br.ifsp.guesthouse.model;
 
 import br.ifsp.guesthouse.model.enums.RoomStatus;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 @Entity
+@Table(name = "rooms")
 public class Room {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @NotBlank(message = "Room number is required")
+    @Size(max = 3, message = "Room number must not exceed 3 characters")
+    @Pattern(
+            regexp = "\\d+",
+            message = "Room number must contain only digits"
+    )
+    @Column(nullable = false, unique = true, length = 3)
     private String number;
 
-    @ManyToOne
-    @JoinColumn(name = "room_type_id")
+    @NotNull(message = "Room type is required")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "room_type_id", nullable = false)
     private RoomType type;
 
+    @NotNull(message = "Room status is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RoomStatus status = RoomStatus.AVAILABLE;
 
-    public Long getId() {
-        return id;
+    public Room() {
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public Long getId() {
+        return id;
     }
 
     public String getNumber() {

@@ -10,15 +10,15 @@ import java.math.BigDecimal;
 
 public record RoomTypeRequestDTO(
 
-        @NotBlank(message = "O nome é obrigatório")
-        @Size(max = 100, message = "O nome deve ter no máximo 100 caracteres")
+        @NotBlank(message = "Room type name is required")
+        @Size(max = 100, message = "Room type name must not exceed 100 characters")
         String name,
 
-        @Min(value = 1, message = "A capacidade deve ser de pelo menos 1 hóspede")
+        @Min(value = 1, message = "Capacity must be at least 1 guest")
         int capacity,
 
-        @NotNull(message = "O valor da diária é obrigatório")
-        @DecimalMin(value = "0.01", message = "O valor da diária deve ser maior que zero")
+        @NotNull(message = "Daily rate is required")
+        @DecimalMin(value = "0.01", message = "Daily rate must be greater than zero")
         BigDecimal dailyRate
 
 ) {

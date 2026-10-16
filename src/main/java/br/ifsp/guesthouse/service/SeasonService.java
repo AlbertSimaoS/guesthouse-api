@@ -1,12 +1,11 @@
-
 package br.ifsp.guesthouse.service;
 
 import br.ifsp.guesthouse.dto.SeasonRequestDTO;
 import br.ifsp.guesthouse.dto.SeasonResponseDTO;
 import br.ifsp.guesthouse.model.Season;
 import br.ifsp.guesthouse.repository.SeasonRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,12 +21,11 @@ public class SeasonService {
 
     @Transactional
     public SeasonResponseDTO register(SeasonRequestDTO request) {
-
-        String name = request.name();
+        String name = request.name().trim();
 
         if (seasonRepository.existsByNameIgnoreCase(name)) {
             throw new IllegalArgumentException(
-                    "Essa temporada já existe"
+                    "A season with this name already exists."
             );
         }
 
@@ -37,22 +35,19 @@ public class SeasonService {
 
         if (endDate.isBefore(startDate)) {
             throw new IllegalArgumentException(
-                    "A data de término deve ser posterior ou igual à data de início"
+                    "The end date must be on or after the start date."
             );
         }
 
-        if (seasonRepository.existsOverlappingSeason(
-                startDate,
-                endDate
-        )) {
+        if (seasonRepository.existsOverlappingSeason(startDate, endDate)) {
             throw new IllegalArgumentException(
-                    "O período informado se sobrepõe a uma temporada existente"
+                    "The specified period overlaps with an existing season."
             );
         }
 
         if (multiplier.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException(
-                    "O multiplicador precisa ser maior que zero"
+                    "The multiplier must be greater than zero."
             );
         }
 

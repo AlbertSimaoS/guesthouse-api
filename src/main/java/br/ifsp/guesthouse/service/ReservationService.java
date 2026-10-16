@@ -2,18 +2,22 @@ package br.ifsp.guesthouse.service;
 
 import br.ifsp.guesthouse.dto.ReservationRequestDTO;
 import br.ifsp.guesthouse.dto.ReservationResponseDTO;
-import br.ifsp.guesthouse.model.*;
+import br.ifsp.guesthouse.model.Reservation;
+import br.ifsp.guesthouse.model.Room;
+import br.ifsp.guesthouse.model.RoomType;
+import br.ifsp.guesthouse.model.Season;
+import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.SeasonRepository;
 import br.ifsp.guesthouse.repository.UserAccountRepository;
 
-import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -45,6 +49,8 @@ public class ReservationService {
     public ReservationResponseDTO createReservation(
             ReservationRequestDTO request
     ) {
+        Long userId = getAuthenticatedUserId();
+
         LocalDate checkIn = request.checkIn();
         LocalDate checkOut = request.checkOut();
 
@@ -69,18 +75,26 @@ public class ReservationService {
             );
         }
 
-        Room room = roomRepository.findById(request.roomId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Room not found."
-                ));
+        if (request.roomId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Room ID is required."
+            );
+        }
 
-        if (request.numberOfGuests() == null || request.numberOfGuests() <= 0) {
+        if (request.numberOfGuests() == null
+                || request.numberOfGuests() <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Number of guests must be positive."
             );
         }
+
+        Room room = roomRepository.findById(request.roomId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Room not found."
+                ));
 
         if (request.numberOfGuests() > room.getType().getCapacity()) {
             throw new ResponseStatusException(
@@ -109,26 +123,16 @@ public class ReservationService {
             );
         }
 
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null
-                || !authentication.isAuthenticated()
-                || !(authentication.getPrincipal() instanceof Long userId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "User authentication is required."
-            );
-        }
-
         UserAccount guest = userAccountRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
                         "Authenticated user not found."
                 ));
 
+        RoomType roomType = room.getType();
+
         BigDecimal totalPrice = calculateStayPrice(
-                room.getType(),
+                roomType,
                 checkIn,
                 checkOut
         );
@@ -155,6 +159,22 @@ public class ReservationService {
                 savedReservation.getTotalPrice(),
                 savedReservation.getStatus()
         );
+    }
+
+    private Long getAuthenticatedUserId() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof Long userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User authentication is required."
+            );
+        }
+
+        return userId;
     }
 
     private BigDecimal calculateStayPrice(

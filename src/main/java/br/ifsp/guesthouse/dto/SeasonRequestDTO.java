@@ -10,18 +10,18 @@ import java.time.LocalDate;
 
 public record SeasonRequestDTO(
 
-        @NotBlank(message = "O nome da temporada é obrigatório")
-        @Size(max = 100, message = "O nome deve ter no máximo 100 caracteres")
+        @NotBlank(message = "Season name is required")
+        @Size(max = 100, message = "Season name must not exceed 100 characters")
         String name,
 
-        @NotNull(message = "A data de início é obrigatória")
+        @NotNull(message = "Start date is required")
         LocalDate startDate,
 
-        @NotNull(message = "A data de término é obrigatória")
+        @NotNull(message = "End date is required")
         LocalDate endDate,
 
-        @NotNull(message = "O multiplicador é obrigatório")
-        @DecimalMin(value = "0.01", message = "O multiplicador deve ser maior que zero")
+        @NotNull(message = "Multiplier is required")
+        @DecimalMin(value = "0.01", message = "Multiplier must be greater than zero")
         BigDecimal multiplier
 
 ) {

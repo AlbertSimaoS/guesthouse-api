@@ -9,6 +9,7 @@ import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.service.AuthService;
 import br.ifsp.guesthouse.service.JwtService;
 import br.ifsp.guesthouse.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -18,10 +19,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(
+        name = "Authentication",
+        description = "Endpoints for registration, login and password management"
+)
 @RestController
 @RequestMapping("/auth")
-@Tag(name = "Autenticação", description = "Operações relacionadas a autenticação dos usuários")
 public class AuthController {
+
     private final AuthService authService;
     private final JwtService jwtService;
     private final UserService userService;
@@ -32,6 +37,10 @@ public class AuthController {
         this.userService = userService;
     }
 
+    @Operation(
+            summary = "Register a new user",
+            description = "Creates a new guest account and returns the registered user's information."
+    )
     @PostMapping("/register")
     public ResponseEntity<UserResponseDTO> register(@Valid @RequestBody UserRequestDTO dto) {
         UserAccount user = userService.register(dto);
@@ -43,10 +52,12 @@ public class AuthController {
                 .body(response);
     }
 
+    @Operation(
+            summary = "Authenticate a user",
+            description = "Authenticates a user using their email and password. If the credentials are valid, returns a JWT access token, its type (Bearer), and the user's information."
+    )
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(
-            @Valid @RequestBody LoginRequestDTO request) {
-
+    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         UserAccount user = authService.authenticate(
                 request.email(),
                 request.password()
@@ -54,8 +65,7 @@ public class AuthController {
 
         String token = jwtService.generateToken(user.getId());
 
-        UserResponseDTO userResponse =
-                UserResponseDTO.fromEntity(user);
+        UserResponseDTO userResponse = UserResponseDTO.fromEntity(user);
 
         LoginResponseDTO response = new LoginResponseDTO(
                 token,

@@ -1,6 +1,10 @@
 package br.ifsp.guesthouse.service;
 
-import br.ifsp.guesthouse.dto.*;
+import br.ifsp.guesthouse.dto.PageResponseDTO;
+import br.ifsp.guesthouse.dto.RoomAvailabilityRequestDTO;
+import br.ifsp.guesthouse.dto.RoomAvailabilityResponseDTO;
+import br.ifsp.guesthouse.dto.RoomRequestDTO;
+import br.ifsp.guesthouse.dto.RoomResponseDTO;
 import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.Season;
@@ -8,11 +12,12 @@ import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
 import br.ifsp.guesthouse.repository.SeasonRepository;
-import jakarta.transaction.Transactional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -31,7 +36,8 @@ public class RoomService {
 
     public RoomService(
             RoomRepository roomRepository,
-            RoomTypeRepository roomTypeRepository, SeasonRepository seasonRepository
+            RoomTypeRepository roomTypeRepository,
+            SeasonRepository seasonRepository
     ) {
         this.roomRepository = roomRepository;
         this.roomTypeRepository = roomTypeRepository;
@@ -44,15 +50,13 @@ public class RoomService {
 
         if (roomRepository.existsByNumberIgnoreCase(number)) {
             throw new IllegalArgumentException(
-                    "Já existe um quarto com esse número"
+                    "A room with this number already exists."
             );
         }
 
-        Long typeId = request.typeId();
-
-        RoomType roomType = roomTypeRepository.findById(typeId)
+        RoomType roomType = roomTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Esse tipo de quarto não existe"
+                        "Room type not found."
                 ));
 
         Room room = new Room();
@@ -64,8 +68,7 @@ public class RoomService {
         return new RoomResponseDTO(savedRoom);
     }
 
-
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponseDTO<RoomAvailabilityResponseDTO> findAvailableRooms(
             RoomAvailabilityRequestDTO request,
             Pageable pageable
@@ -81,45 +84,49 @@ public class RoomService {
                 ReservationStatus.CONFIRMED
         );
 
-        List<Room> availableRooms = roomRepository.findAvailableRoomsUnpaged(
-                checkIn,
-                checkOut,
-                guests,
-                blockingStatuses
-        );
+        List<Room> availableRooms =
+                roomRepository.findAvailableRoomsUnpaged(
+                        checkIn,
+                        checkOut,
+                        guests,
+                        blockingStatuses
+                );
 
-        Map<Long, List<Room>> roomsByType = availableRooms.stream()
-                .collect(Collectors.groupingBy(
-                        room -> room.getType().getId()
-                ));
+        Map<Long, List<Room>> roomsByType =
+                availableRooms.stream()
+                        .collect(Collectors.groupingBy(
+                                room -> room.getType().getId()
+                        ));
 
-        List<RoomAvailabilityResponseDTO> results = roomsByType.values()
-                .stream()
-                .map(rooms -> {
-                    RoomType type = rooms.get(0).getType();
+        List<RoomAvailabilityResponseDTO> results =
+                roomsByType.values().stream()
+                        .map(rooms -> {
+                            RoomType type = rooms.get(0).getType();
 
-                    BigDecimal totalStayPrice = calculateStayPrice(
-                            type, checkIn, checkOut
-                    );
+                            BigDecimal totalStayPrice = calculateStayPrice(
+                                    type,
+                                    checkIn,
+                                    checkOut
+                            );
 
-                    return new RoomAvailabilityResponseDTO(
-                            type.getId(),
-                            type.getName(),
-                            type.getCapacity(),
-                            (long) rooms.size(),
-                            type.getDailyRate(),
-                            totalStayPrice
-                    );
-                })
-                .sorted(Comparator.comparing(
-                        RoomAvailabilityResponseDTO::roomTypeName
-                ))
-                .toList();
+                            return new RoomAvailabilityResponseDTO(
+                                    type.getId(),
+                                    type.getName(),
+                                    type.getCapacity(),
+                                    (long) rooms.size(),
+                                    type.getDailyRate(),
+                                    totalStayPrice
+                            );
+                        })
+                        .sorted(Comparator.comparing(
+                                RoomAvailabilityResponseDTO::roomTypeName
+                        ))
+                        .toList();
 
         int page = pageable.getPageNumber();
         int size = pageable.getPageSize();
-        int fromIndex = Math.min(page * size, results.size());
-        int toIndex = Math.min(fromIndex + size, results.size());
+        int fromIndex = (int) Math.min((long) page * size, results.size());
+        int toIndex = (int) Math.min((long) fromIndex + size, results.size());
 
         List<RoomAvailabilityResponseDTO> pageContent =
                 results.subList(fromIndex, toIndex);
@@ -133,7 +140,6 @@ public class RoomService {
         return PageResponseDTO.from(resultPage);
     }
 
-
     private void validateAvailabilityRequest(
             LocalDate checkIn,
             LocalDate checkOut,
@@ -141,19 +147,25 @@ public class RoomService {
     ) {
         if (checkIn == null || checkOut == null) {
             throw new IllegalArgumentException(
-                    "Check-in e check-out são obrigatórios."
+                    "Check-in and check-out dates are required."
+            );
+        }
+
+        if (!checkIn.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Check-in must be in the future."
             );
         }
 
         if (!checkOut.isAfter(checkIn)) {
             throw new IllegalArgumentException(
-                    "O check-out deve ser posterior ao check-in."
+                    "Check-out must be after check-in."
             );
         }
 
         if (guests == null || guests <= 0) {
             throw new IllegalArgumentException(
-                    "A quantidade de hóspedes deve ser maior que zero."
+                    "The number of guests must be positive."
             );
         }
     }
@@ -163,7 +175,7 @@ public class RoomService {
             LocalDate checkIn,
             LocalDate checkOut
     ) {
-        BigDecimal basePrice = roomType.getDailyRate();
+        BigDecimal dailyRate = roomType.getDailyRate();
         BigDecimal total = BigDecimal.ZERO;
 
         for (LocalDate night = checkIn;
@@ -172,14 +184,13 @@ public class RoomService {
 
             BigDecimal multiplier = seasonRepository
                     .findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
-                            night, night
+                            night,
+                            night
                     )
                     .map(Season::getMultiplier)
                     .orElse(BigDecimal.ONE);
 
-            BigDecimal nightlyPrice = basePrice.multiply(multiplier);
-
-            total = total.add(nightlyPrice);
+            total = total.add(dailyRate.multiply(multiplier));
         }
 
         return total.setScale(2, RoundingMode.HALF_UP);

@@ -14,24 +14,28 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Objects;
 
 @Service
 public class PasswordResetService {
 
+    private static final int TOKEN_EXPIRATION_MINUTES = 15;
+
     private final UserAccountRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
-
     private final SecureRandom secureRandom = new SecureRandom();
 
     public PasswordResetService(
             UserAccountRepository userRepository,
             PasswordResetTokenRepository tokenRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -39,12 +43,12 @@ public class PasswordResetService {
 
     @Transactional
     public PasswordResetTokenResponseDTO requestPasswordReset(
-            ForgotPasswordRequestDTO request) {
-
+            ForgotPasswordRequestDTO request
+    ) {
         UserAccount user = userRepository
                 .findByCpfAndEmail(request.cpf(), request.email())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "CPF ou e-mail inválido."
+                        "Unable to process the password reset request."
                 ));
 
         tokenRepository.deleteByUser_Id(user.getId());
@@ -61,23 +65,35 @@ public class PasswordResetService {
         PasswordResetToken resetToken = new PasswordResetToken(
                 tokenHash,
                 user,
-                LocalDateTime.now().plusMinutes(15)
+                LocalDateTime.now().plusMinutes(TOKEN_EXPIRATION_MINUTES)
         );
 
         tokenRepository.save(resetToken);
 
+        // For development only. In production, deliver the token
+        // through a verified channel such as the user's email.
         return new PasswordResetTokenResponseDTO(
-                "Token gerado com sucesso. Ele expira em 15 minutos.",
+                "If the provided information matches an account, "
+                        + "password reset instructions will be sent.",
                 rawToken
         );
     }
 
     @Transactional
     public void resetPassword(ResetPasswordRequestDTO request) {
-
-        if (!request.newPassword().equals(request.confirmPassword())) {
+        if (request.newPassword() == null
+                || !Objects.equals(
+                request.newPassword(),
+                request.confirmPassword()
+        )) {
             throw new IllegalArgumentException(
-                    "A nova senha e a confirmação são diferentes."
+                    "The new password and confirmation do not match."
+            );
+        }
+
+        if (request.token() == null || request.token().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Invalid or expired reset token."
             );
         }
 
@@ -86,18 +102,16 @@ public class PasswordResetService {
         PasswordResetToken resetToken = tokenRepository
                 .findByTokenHash(tokenHash)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Token inválido ou expirado."
+                        "Invalid or expired reset token."
                 ));
 
-        if (resetToken.isUsed()
-                || !resetToken.getExpiresAt().isAfter(LocalDateTime.now())) {
+        if (!resetToken.isValid()) {
             throw new IllegalArgumentException(
-                    "Token inválido ou expirado."
+                    "Invalid or expired reset token."
             );
         }
 
         UserAccount user = resetToken.getUser();
-
         user.setPassword(passwordEncoder.encode(request.newPassword()));
 
         resetToken.markAsUsed();
@@ -113,9 +127,9 @@ public class PasswordResetService {
 
             return HexFormat.of().formatHex(hash);
 
-        } catch (Exception e) {
+        } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(
-                    "Erro ao processar o token.", e
+                    "Unable to process the reset token.", e
             );
         }
     }

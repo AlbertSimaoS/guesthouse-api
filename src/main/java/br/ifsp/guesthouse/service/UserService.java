@@ -1,4 +1,3 @@
-
 package br.ifsp.guesthouse.service;
 
 import br.ifsp.guesthouse.dto.UserRequestDTO;
@@ -15,33 +14,38 @@ public class UserService {
     private final UserAccountRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserAccountRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(
+            UserAccountRepository userRepository,
+            PasswordEncoder passwordEncoder
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
     public UserAccount register(UserRequestDTO dto) {
-        if (userRepository.existsByEmail(dto.email())) {
+        String email = dto.email().trim().toLowerCase();
+        String cpf = dto.cpf().trim();
+
+        if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException(
-                    "Email already registered");
+                    "Email is already registered."
+            );
         }
 
-        if (userRepository.existsByCpf(dto.cpf())) {
+        if (userRepository.existsByCpf(cpf)) {
             throw new IllegalArgumentException(
-                    "CPF already registered");
+                    "CPF is already registered."
+            );
         }
 
         UserAccount user = new UserAccount();
 
-        user.setName(dto.name());
-        user.setCpf(dto.cpf());
-        user.setEmail(dto.email());
+        user.setName(dto.name().trim());
+        user.setCpf(cpf);
+        user.setEmail(email);
         user.setTelephone(dto.telephone());
-
-        user.setPassword(
-                passwordEncoder.encode(dto.password()));
-
+        user.setPassword(passwordEncoder.encode(dto.password()));
         user.setProfile(Profile.GUEST);
 
         return userRepository.save(user);

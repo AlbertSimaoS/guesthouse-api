@@ -14,6 +14,6 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Guesthouse API")
                         .version("1.0")
-                        .description("API REST para Pousada."));
+                        .description("REST API for a Guesthouse."));
     }
 }

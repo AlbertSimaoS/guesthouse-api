@@ -5,14 +5,14 @@ import jakarta.validation.constraints.Size;
 
 public record ResetPasswordRequestDTO(
 
-        @NotBlank(message = "O token é obrigatório")
+        @NotBlank(message = "Token is required")
         String token,
 
-        @NotBlank(message = "A nova senha é obrigatória")
-        @Size(min = 8, message = "A senha deve ter pelo menos 8 caracteres")
+        @NotBlank(message = "New password is required")
+        @Size(min = 8, message = "Password must contain at least 8 characters")
         String newPassword,
 
-        @NotBlank(message = "A confirmação da senha é obrigatória")
+        @NotBlank(message = "Password confirmation is required")
         String confirmPassword
 
 ) {}

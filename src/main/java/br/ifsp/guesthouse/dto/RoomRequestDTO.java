@@ -1,14 +1,14 @@
 package br.ifsp.guesthouse.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 public record RoomRequestDTO (
-        @NotBlank(message = "O numero do quarto é obrigatório")
-        @Size(max = 3, message = "O numero do quarto so pode ter 3 digitos")
+        @NotBlank(message = "Room number is required")
+        @Size(max = 3, message = "Room number must contain at most 3 characters")
+        @Pattern(regexp = "\\d+", message = "Room number must contain only digits")
         String number,
 
-        @NotNull(message = "O tipo do quarto é obrigatório")
+        @NotNull(message = "Room type is required")
+        @Positive(message = "Room type ID must be positive")
         Long typeId
 ) {}

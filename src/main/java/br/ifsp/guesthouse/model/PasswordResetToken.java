@@ -1,7 +1,17 @@
 package br.ifsp.guesthouse.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
 @Table(name = "password_reset_tokens")
@@ -32,9 +42,9 @@ public class PasswordResetToken {
             UserAccount user,
             LocalDateTime expiresAt
     ) {
-        this.tokenHash = tokenHash;
-        this.user = user;
-        this.expiresAt = expiresAt;
+        this.tokenHash = Objects.requireNonNull(tokenHash, "Token hash is required");
+        this.user = Objects.requireNonNull(user, "User is required");
+        this.expiresAt = Objects.requireNonNull(expiresAt, "Expiration date is required");
         this.used = false;
     }
 
@@ -47,7 +57,7 @@ public class PasswordResetToken {
     }
 
     public void setTokenHash(String tokenHash) {
-        this.tokenHash = tokenHash;
+        this.tokenHash = Objects.requireNonNull(tokenHash, "Token hash is required");
     }
 
     public UserAccount getUser() {
@@ -55,7 +65,7 @@ public class PasswordResetToken {
     }
 
     public void setUser(UserAccount user) {
-        this.user = user;
+        this.user = Objects.requireNonNull(user, "User is required");
     }
 
     public LocalDateTime getExpiresAt() {
@@ -63,7 +73,7 @@ public class PasswordResetToken {
     }
 
     public void setExpiresAt(LocalDateTime expiresAt) {
-        this.expiresAt = expiresAt;
+        this.expiresAt = Objects.requireNonNull(expiresAt, "Expiration date is required");
     }
 
     public boolean isUsed() {
@@ -79,6 +89,10 @@ public class PasswordResetToken {
     }
 
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
+        return expiresAt == null || !LocalDateTime.now().isBefore(expiresAt);
+    }
+
+    public boolean isValid() {
+        return !used && !isExpired();
     }
 }

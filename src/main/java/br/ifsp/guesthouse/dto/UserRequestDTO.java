@@ -9,33 +9,33 @@ import jakarta.validation.constraints.Size;
 public record UserRequestDTO(
 
         @NotBlank(message = "Name is required")
-        @Size(max = 100, message = "Name must have a maximum of 100 characters")
+        @Size(max = 100, message = "Name must not exceed 100 characters")
         String name,
 
         @NotBlank(message = "CPF is required")
         @Pattern(
-                regexp = "^\\d{11}$",
+                regexp = "\\d{11}",
                 message = "CPF must contain exactly 11 digits"
         )
         String cpf,
 
         @NotBlank(message = "Email is required")
         @Email(message = "Invalid email format")
-        @Size(max = 100, message = "Email must have a maximum of 100 characters")
+        @Size(max = 100, message = "Email must not exceed 100 characters")
         String email,
 
         @NotBlank(message = "Telephone is required")
         @Pattern(
-            regexp = "^\\+?[1-9]\\d{1,14}$",
-            message = "Invalid telephone number"
+                regexp = "^\\+?[1-9]\\d{1,14}$",
+                message = "Telephone number must be in a valid international format"
         )
         String telephone,
 
         @NotBlank(message = "Password is required")
         @Size(
-            min = 8,
-            max = 100,
-            message = "Password must have between 8 and 100 characters"
+                min = 8,
+                max = 100,
+                message = "Password must contain between 8 and 100 characters"
         )
         String password
 

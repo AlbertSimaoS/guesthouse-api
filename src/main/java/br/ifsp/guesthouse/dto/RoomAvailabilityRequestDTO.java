@@ -2,22 +2,22 @@ package br.ifsp.guesthouse.dto;
 
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDate;
 
 public record RoomAvailabilityRequestDTO(
 
-        @NotNull(message = "A data de check-in é obrigatória")
-        @Future(message = "O check-in deve ser uma data futura")
+        @NotNull(message = "Check-in date is required")
+        @Future(message = "Check-in date must be in the future")
         LocalDate checkIn,
 
-        @NotNull(message = "A data de check-out é obrigatória")
-        @Future(message = "O check-out deve ser uma data futura")
+        @NotNull(message = "Check-out date is required")
+        @Future(message = "Check-out date must be in the future")
         LocalDate checkOut,
 
-        @NotNull(message = "O número de hóspedes é obrigatório")
-        @PositiveOrZero(message = "O número de hóspedes não pode ser negativo")
+        @NotNull(message = "Number of guests is required")
+        @Positive(message = "Number of guests must be positive")
         Integer guests
 ) {
 }

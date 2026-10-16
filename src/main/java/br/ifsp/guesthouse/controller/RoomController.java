@@ -4,6 +4,7 @@ import br.ifsp.guesthouse.dto.*;
 import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.service.RoomService;
 import br.ifsp.guesthouse.service.RoomTypeService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -11,9 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(
+        name = "Rooms",
+        description = "Endpoints for room management and availability"
+)
 @RestController
 @RequestMapping("/room")
-@Tag(name = "Quartos", description = "Operações relacionadas aos usuarios")
 public class RoomController {
     private final RoomService roomService;
 
@@ -21,6 +25,10 @@ public class RoomController {
         this.roomService = roomService;
     }
 
+    @Operation(
+            summary = "Register a new room",
+            description = "Registers a new room using the provided room details and returns the created room information."
+    )
     @PostMapping("/register")
     public ResponseEntity<RoomResponseDTO> register(@Valid @RequestBody RoomRequestDTO dto){
         RoomResponseDTO response = roomService.register(dto);
@@ -30,6 +38,10 @@ public class RoomController {
                 .body(response);
     }
 
+    @Operation(
+            summary = "Find available rooms",
+            description = "Retrieves a paginated list of available rooms based on the requested check-in date, check-out date, and number of guests."
+    )
     @GetMapping("/availability")
     public ResponseEntity<PageResponseDTO<RoomAvailabilityResponseDTO>> findAvailableRooms(
             @Valid @ModelAttribute RoomAvailabilityRequestDTO request,
