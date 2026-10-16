@@ -45,6 +45,10 @@ public class Reservation {
     @Column(nullable = false, length = 20)
     private ReservationStatus status = ReservationStatus.PENDING;
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public Reservation() {
     }
 

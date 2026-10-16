@@ -41,7 +41,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/auth/register",
-                                "/auth/login"
+                                "/auth/login",
+                                "/auth/forgot-password",
+                                "/auth/reset-password"
                         ).permitAll()
 
                         .requestMatchers(
@@ -61,6 +63,13 @@ public class SecurityConfig {
                                 "/room/register",
                                 "/season/register"
                         ).hasRole("RECEPTION")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/reservation"
+                        ).hasRole("GUEST")
+
+                        .requestMatchers("/error").permitAll()
 
                         .anyRequest().authenticated()
                 )
