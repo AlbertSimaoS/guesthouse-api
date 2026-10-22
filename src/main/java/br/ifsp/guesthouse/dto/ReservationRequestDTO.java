@@ -7,9 +7,9 @@ import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
 
 public record ReservationRequestDTO(
-        @NotNull(message = "Room ID is required")
-        @Positive(message = "Room ID must be positive")
-        Long roomId,
+        @NotNull(message = "RoomType ID is required")
+        @Positive(message = "RoomType ID must be positive")
+        Integer roomTypeId,
 
         @NotNull(message = "Check-in date is required")
         @Future(message = "Check-in date must be in the future")
@@ -23,9 +23,4 @@ public record ReservationRequestDTO(
         @Positive(message = "Number of guests must be positive")
         Integer numberOfGuests
 ) {
-    public boolean hasValidDateRange() {
-        return checkIn != null
-                && checkOut != null
-                && checkOut.isAfter(checkIn);
-    }
 }

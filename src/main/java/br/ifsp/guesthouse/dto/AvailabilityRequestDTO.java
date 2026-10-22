@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDate;
 
-public record RoomAvailabilityRequestDTO(
+public record AvailabilityRequestDTO(
 
         @NotNull(message = "Check-in date is required")
         @Future(message = "Check-in date must be in the future")

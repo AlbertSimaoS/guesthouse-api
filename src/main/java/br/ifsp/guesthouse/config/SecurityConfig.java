@@ -1,6 +1,8 @@
+
 package br.ifsp.guesthouse.config;
 
 import br.ifsp.guesthouse.repository.UserAccountRepository;
+import br.ifsp.guesthouse.exception.RestAuthenticationEntryPoint;
 import br.ifsp.guesthouse.service.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,27 +19,36 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(
             JwtService jwtService,
-            UserAccountRepository userRepository
+            UserAccountRepository userRepository,
+            RestAuthenticationEntryPoint authenticationEntryPoint
     ) {
-        return new JwtAuthenticationFilter(jwtService, userRepository);
+        return new JwtAuthenticationFilter(jwtService, userRepository, authenticationEntryPoint);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            JwtAuthenticationFilter jwtAuthenticationFilter
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            RestAuthenticationEntryPoint authenticationEntryPoint
     ) throws Exception {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
+
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                )
+
                 .authorizeHttpRequests(auth -> auth
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/auth/register",
@@ -70,9 +81,9 @@ public class SecurityConfig {
                         ).hasRole("GUEST")
 
                         .requestMatchers("/error").permitAll()
-
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class

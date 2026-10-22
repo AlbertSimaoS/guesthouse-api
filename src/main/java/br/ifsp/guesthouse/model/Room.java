@@ -23,14 +23,10 @@ public class Room {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private int id;
 
     @NotBlank(message = "Room number is required")
     @Size(max = 3, message = "Room number must not exceed 3 characters")
-    @Pattern(
-            regexp = "\\d+",
-            message = "Room number must contain only digits"
-    )
     @Column(nullable = false, unique = true, length = 3)
     private String number;
 
@@ -47,7 +43,7 @@ public class Room {
     public Room() {
     }
 
-    public Long getId() {
+    public int getId() {
         return id;
     }
 

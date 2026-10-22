@@ -1,7 +1,9 @@
+
 package br.ifsp.guesthouse.config;
 
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.repository.UserAccountRepository;
+import br.ifsp.guesthouse.exception.RestAuthenticationEntryPoint;
 import br.ifsp.guesthouse.service.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -20,13 +22,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserAccountRepository userRepository;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
-            UserAccountRepository userRepository
+            UserAccountRepository userRepository,
+            RestAuthenticationEntryPoint authenticationEntryPoint
     ) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     @Override
@@ -38,38 +43,60 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String header = request.getHeader("Authorization");
 
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+        if (header == null || !header.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            try {
-                Long userId = jwtService.extractUserId(token);
+        String token = header.substring(7);
 
-                UserAccount user = userRepository.findById(userId)
-                        .orElse(null);
+        try {
+            Long userId = jwtService.extractUserId(token);
 
-                if (user != null) {
-                    var authorities = List.of(
-                            new SimpleGrantedAuthority(
-                                    "ROLE_" + user.getProfile().name()
-                            )
+            UserAccount user = userRepository.findById(userId)
+                    .orElse(null);
+
+            if (user == null) {
+                SecurityContextHolder.clearContext();
+                authenticationEntryPoint.commence(
+                        request,
+                        response,
+                        new org.springframework.security.authentication
+                                .BadCredentialsException(
+                                "Invalid or expired access token"
+                        )
+                );
+                return;
+            }
+
+            var authorities = List.of(
+                    new SimpleGrantedAuthority(
+                            "ROLE_" + user.getProfile().name()
+                    )
+            );
+
+            var authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            userId,
+                            null,
+                            authorities
                     );
 
-                    var authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userId,
-                                    null,
-                                    authorities
-                            );
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
 
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(authentication);
-                } else {
-                    SecurityContextHolder.clearContext();
-                }
+        } catch (JwtException | IllegalArgumentException ex) {
+            SecurityContextHolder.clearContext();
 
-            } catch (JwtException | IllegalArgumentException ex) {
-                SecurityContextHolder.clearContext();
-            }
+            authenticationEntryPoint.commence(
+                    request,
+                    response,
+                    new org.springframework.security.authentication
+                            .BadCredentialsException(
+                            "Invalid or expired access token"
+                    )
+            );
+            return;
         }
 
         filterChain.doFilter(request, response);

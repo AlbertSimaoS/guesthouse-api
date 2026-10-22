@@ -3,8 +3,8 @@ package br.ifsp.guesthouse.controller;
 
 import br.ifsp.guesthouse.dto.LoginRequestDTO;
 import br.ifsp.guesthouse.dto.LoginResponseDTO;
-import br.ifsp.guesthouse.dto.UserRequestDTO;
-import br.ifsp.guesthouse.dto.UserResponseDTO;
+import br.ifsp.guesthouse.dto.RegisterRequestDTO;
+import br.ifsp.guesthouse.dto.RegisterResponseDTO;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.service.AuthService;
 import br.ifsp.guesthouse.service.JwtService;
@@ -42,10 +42,13 @@ public class AuthController {
             description = "Creates a new guest account and returns the registered user's information."
     )
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDTO> register(@Valid @RequestBody UserRequestDTO dto) {
+    public ResponseEntity<RegisterResponseDTO> register(
+            @Valid @RequestBody RegisterRequestDTO dto
+    ) {
+
         UserAccount user = userService.register(dto);
 
-        UserResponseDTO response = UserResponseDTO.fromEntity(user);
+        RegisterResponseDTO response = RegisterResponseDTO.fromEntity(user);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -65,14 +68,14 @@ public class AuthController {
 
         String token = jwtService.generateToken(user.getId());
 
-        UserResponseDTO userResponse = UserResponseDTO.fromEntity(user);
+        RegisterResponseDTO response = RegisterResponseDTO.fromEntity(user);
 
-        LoginResponseDTO response = new LoginResponseDTO(
+        LoginResponseDTO loginResponseDTO = new LoginResponseDTO(
                 token,
                 "Bearer",
-                userResponse
+                response
         );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(loginResponseDTO);
     }
 }

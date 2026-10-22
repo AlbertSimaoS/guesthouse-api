@@ -1,9 +1,8 @@
 package br.ifsp.guesthouse.controller;
 
 import br.ifsp.guesthouse.dto.*;
-import br.ifsp.guesthouse.model.Room;
+import br.ifsp.guesthouse.service.AvailabilityService;
 import br.ifsp.guesthouse.service.RoomService;
-import br.ifsp.guesthouse.service.RoomTypeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,9 +19,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/room")
 public class RoomController {
     private final RoomService roomService;
+    private final AvailabilityService availabilityService;
 
-    public RoomController(RoomService roomService) {
+    public RoomController(RoomService roomService, AvailabilityService availabilityService) {
         this.roomService = roomService;
+        this.availabilityService = availabilityService;
     }
 
     @Operation(
@@ -44,11 +45,11 @@ public class RoomController {
     )
     @GetMapping("/availability")
     public ResponseEntity<PageResponseDTO<RoomAvailabilityResponseDTO>> findAvailableRooms(
-            @Valid @ModelAttribute RoomAvailabilityRequestDTO request,
+            @Valid @ModelAttribute AvailabilityRequestDTO request,
             Pageable pageable
     ) {
         return ResponseEntity.ok(
-                roomService.findAvailableRooms(request, pageable)
+                availabilityService.findAvailableRooms(request, pageable)
         );
     }
 }

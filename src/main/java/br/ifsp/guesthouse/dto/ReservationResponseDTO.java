@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 public record ReservationResponseDTO(
         Long id,
-        Long roomId,
+        Integer roomId,
         Long userId,
         LocalDate checkIn,
         LocalDate checkOut,

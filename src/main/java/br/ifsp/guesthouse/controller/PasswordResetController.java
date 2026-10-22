@@ -33,7 +33,8 @@ public class PasswordResetController {
             description = "Initiates the password recovery process and returns the password reset token."
     )
     @PostMapping("/forgot-password")
-    public ResponseEntity<PasswordResetTokenResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+    public ResponseEntity<PasswordResetTokenResponseDTO> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequestDTO request) {
         PasswordResetTokenResponseDTO response = passwordResetService.requestPasswordReset(request);
 
         return ResponseEntity.ok(response);
@@ -44,7 +45,8 @@ public class PasswordResetController {
             description = "Resets the user's password using a valid password reset token and returns a confirmation message."
     )
     @PostMapping("/reset-password")
-    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
+    public ResponseEntity<Map<String, String>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequestDTO request) {
         passwordResetService.resetPassword(request);
 
         return ResponseEntity.ok(Map.of(

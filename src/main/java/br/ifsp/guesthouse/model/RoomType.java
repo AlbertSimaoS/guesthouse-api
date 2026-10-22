@@ -20,7 +20,7 @@ public class RoomType {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private int id;
 
     @NotBlank(message = "Room type name is required")
     @Size(max = 100, message = "Room type name must not exceed 100 characters")
@@ -39,7 +39,7 @@ public class RoomType {
     public RoomType() {
     }
 
-    public Long getId() {
+    public int getId() {
         return id;
     }
 

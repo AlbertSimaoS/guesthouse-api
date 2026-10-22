@@ -20,7 +20,7 @@ public class Season {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private int id;
 
     @NotBlank(message = "Season name is required")
     @Size(max = 100, message = "Season name must not exceed 100 characters")
@@ -43,7 +43,7 @@ public class Season {
     public Season() {
     }
 
-    public Long getId() {
+    public int getId() {
         return id;
     }
 

@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record SeasonResponseDTO (
-        Long id,
+        Integer id,
         String name,
         LocalDate startDate,
         LocalDate endDate,

@@ -4,10 +4,10 @@ import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
 
 public record RoomResponseDTO(
-        Long id,
+        Integer id,
         String number,
         RoomStatus status,
-        Long typeId,
+        Integer typeId,
         String typeName
 ) {
     public RoomResponseDTO(Room room) {

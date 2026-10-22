@@ -2,26 +2,24 @@ package br.ifsp.guesthouse.service;
 
 import br.ifsp.guesthouse.dto.ReservationRequestDTO;
 import br.ifsp.guesthouse.dto.ReservationResponseDTO;
+import br.ifsp.guesthouse.exception.ResourceNotFoundException;
 import br.ifsp.guesthouse.model.Reservation;
 import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.model.RoomType;
-import br.ifsp.guesthouse.model.Season;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.repository.ReservationRepository;
-import br.ifsp.guesthouse.repository.RoomRepository;
-import br.ifsp.guesthouse.repository.SeasonRepository;
+import br.ifsp.guesthouse.repository.RoomTypeRepository;
 import br.ifsp.guesthouse.repository.UserAccountRepository;
 
-import org.springframework.http.HttpStatus;
+import jakarta.validation.Valid;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -29,177 +27,136 @@ import java.util.List;
 public class ReservationService {
 
     private final ReservationRepository reservationRepository;
-    private final RoomRepository roomRepository;
+    private final RoomTypeRepository roomTypeRepository;
     private final UserAccountRepository userAccountRepository;
-    private final SeasonRepository seasonRepository;
+    private final AvailabilityService availabilityService;
 
     public ReservationService(
             ReservationRepository reservationRepository,
-            RoomRepository roomRepository,
+            RoomTypeRepository roomTypeRepository,
             UserAccountRepository userAccountRepository,
-            SeasonRepository seasonRepository
+            AvailabilityService availabilityService
     ) {
         this.reservationRepository = reservationRepository;
-        this.roomRepository = roomRepository;
+        this.roomTypeRepository = roomTypeRepository;
         this.userAccountRepository = userAccountRepository;
-        this.seasonRepository = seasonRepository;
+        this.availabilityService = availabilityService;
     }
 
     @Transactional
     public ReservationResponseDTO createReservation(
-            ReservationRequestDTO request
+            @Valid ReservationRequestDTO request
     ) {
-        Long userId = getAuthenticatedUserId();
-
         LocalDate checkIn = request.checkIn();
         LocalDate checkOut = request.checkOut();
+        Integer guests = request.numberOfGuests();
+        Integer roomTypeId = request.roomTypeId();
 
-        if (checkIn == null || checkOut == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Check-in and check-out dates are required."
+        availabilityService.validatePeriod(checkIn, checkOut);
+
+        if (guests == null || guests <= 0) {
+            throw new IllegalArgumentException(
+                    "The number of guests must be positive."
             );
         }
 
-        if (!checkIn.isAfter(LocalDate.now())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Check-in must be in the future."
+        if (roomTypeId == null) {
+            throw new IllegalArgumentException(
+                    "Room type is required."
             );
         }
 
-        if (!checkOut.isAfter(checkIn)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Check-out must be after check-in."
-            );
-        }
-
-        if (request.roomId() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Room ID is required."
-            );
-        }
-
-        if (request.numberOfGuests() == null
-                || request.numberOfGuests() <= 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Number of guests must be positive."
-            );
-        }
-
-        Room room = roomRepository.findById(request.roomId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Room not found."
-                ));
-
-        if (request.numberOfGuests() > room.getType().getCapacity()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "The room capacity is insufficient."
-            );
-        }
-
-        List<ReservationStatus> blockingStatuses = List.of(
-                ReservationStatus.PENDING,
-                ReservationStatus.CONFIRMED
-        );
-
-        boolean hasConflict =
-                reservationRepository.existsOverlappingReservation(
-                        room.getId(),
-                        checkIn,
-                        checkOut,
-                        blockingStatuses
-                );
-
-        if (hasConflict) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "The room is not available for the selected dates."
-            );
-        }
-
-        UserAccount guest = userAccountRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Authenticated user not found."
-                ));
-
-        RoomType roomType = room.getType();
-
-        BigDecimal totalPrice = calculateStayPrice(
-                roomType,
+        availabilityService.validateHighSeasonMinimumStay(
                 checkIn,
                 checkOut
         );
 
-        Reservation reservation = new Reservation();
-        reservation.setRoom(room);
-        reservation.setGuest(guest);
-        reservation.setCheckIn(checkIn);
-        reservation.setCheckOut(checkOut);
-        reservation.setNumberOfGuests(request.numberOfGuests());
-        reservation.setTotalPrice(totalPrice);
-        reservation.setStatus(ReservationStatus.PENDING);
-
-        Reservation savedReservation =
-                reservationRepository.save(reservation);
-
-        return new ReservationResponseDTO(
-                savedReservation.getId(),
-                savedReservation.getRoom().getId(),
-                savedReservation.getGuest().getId(),
-                savedReservation.getCheckIn(),
-                savedReservation.getCheckOut(),
-                savedReservation.getNumberOfGuests(),
-                savedReservation.getTotalPrice(),
-                savedReservation.getStatus()
-        );
-    }
-
-    private Long getAuthenticatedUserId() {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null
                 || !authentication.isAuthenticated()
-                || !(authentication.getPrincipal() instanceof Long userId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "User authentication is required."
+                || authentication.getName() == null
+                || "anonymousUser".equals(authentication.getName())) {
+            throw new IllegalArgumentException(
+                    "An authenticated user is required to make a reservation."
             );
         }
 
-        return userId;
-    }
+        Long userId;
 
-    private BigDecimal calculateStayPrice(
-            RoomType roomType,
-            LocalDate checkIn,
-            LocalDate checkOut
-    ) {
-        BigDecimal total = BigDecimal.ZERO;
-        BigDecimal dailyRate = roomType.getDailyRate();
-
-        for (LocalDate night = checkIn;
-             night.isBefore(checkOut);
-             night = night.plusDays(1)) {
-
-            BigDecimal multiplier = seasonRepository
-                    .findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
-                            night,
-                            night
-                    )
-                    .map(Season::getMultiplier)
-                    .orElse(BigDecimal.ONE);
-
-            total = total.add(dailyRate.multiply(multiplier));
+        try {
+            userId = Long.valueOf(authentication.getName());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Invalid authenticated user ID."
+            );
         }
 
-        return total.setScale(2, RoundingMode.HALF_UP);
+        UserAccount guest = userAccountRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Authenticated user not found."
+                        )
+                );
+
+        RoomType roomType = roomTypeRepository.findById(roomTypeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room type not found."
+                        )
+                );
+
+        if (roomType.getCapacity() < guests) {
+            throw new IllegalArgumentException(
+                    "The selected room type does not have enough capacity."
+            );
+        }
+
+        List<Room> availableRooms =
+                availabilityService.findAvailableRooms(
+                        roomTypeId,
+                        guests,
+                        checkIn,
+                        checkOut
+                );
+
+        Room room = availableRooms.stream()
+                .findFirst()
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No available room found for the selected type and period."
+                        )
+                );
+
+        BigDecimal totalPrice =
+                availabilityService.calculateStayPrice(
+                        roomType,
+                        checkIn,
+                        checkOut
+                );
+
+        Reservation reservation = new Reservation();
+
+        reservation.setRoom(room);
+        reservation.setGuest(guest);
+        reservation.setCheckIn(checkIn);
+        reservation.setCheckOut(checkOut);
+        reservation.setNumberOfGuests(guests);
+        reservation.setTotalPrice(totalPrice);
+        reservation.setStatus(ReservationStatus.PENDING);
+
+        Reservation saved = reservationRepository.save(reservation);
+
+        return new ReservationResponseDTO(
+                saved.getId(),
+                saved.getRoom().getId(),
+                saved.getGuest().getId(),
+                saved.getCheckIn(),
+                saved.getCheckOut(),
+                saved.getNumberOfGuests(),
+                saved.getTotalPrice(),
+                saved.getStatus()
+        );
     }
 }

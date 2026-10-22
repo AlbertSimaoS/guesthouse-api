@@ -19,6 +19,7 @@ public class RoomTypeService {
 
     @Transactional
     public RoomTypeResponseDTO register(RoomTypeRequestDTO request) {
+
         String name = request.name().trim();
 
         if (name.isBlank()) {

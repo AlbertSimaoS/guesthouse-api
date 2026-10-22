@@ -1,6 +1,7 @@
 package br.ifsp.guesthouse.service;
 
-import br.ifsp.guesthouse.dto.UserRequestDTO;
+import br.ifsp.guesthouse.dto.RegisterRequestDTO;
+import br.ifsp.guesthouse.exception.DuplicateResourceException;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.Profile;
 import br.ifsp.guesthouse.repository.UserAccountRepository;
@@ -23,18 +24,19 @@ public class UserService {
     }
 
     @Transactional
-    public UserAccount register(UserRequestDTO dto) {
+    public UserAccount register(RegisterRequestDTO dto) {
+
         String email = dto.email().trim().toLowerCase();
         String cpf = dto.cpf().trim();
 
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException(
+            throw new DuplicateResourceException(
                     "Email is already registered."
             );
         }
 
         if (userRepository.existsByCpf(cpf)) {
-            throw new IllegalArgumentException(
+            throw new DuplicateResourceException(
                     "CPF is already registered."
             );
         }

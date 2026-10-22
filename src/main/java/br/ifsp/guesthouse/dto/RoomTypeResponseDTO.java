@@ -4,7 +4,7 @@ import br.ifsp.guesthouse.model.RoomType;
 import java.math.BigDecimal;
 
 public record RoomTypeResponseDTO(
-        Long id,
+        Integer id,
         String name,
         int capacity,
         BigDecimal dailyRate
