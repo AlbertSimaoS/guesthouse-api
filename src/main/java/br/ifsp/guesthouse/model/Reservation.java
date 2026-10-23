@@ -55,10 +55,16 @@ public class Reservation {
     @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
+    @NotNull(message = "Deposit amount is required")
+    @PositiveOrZero(message = "Total price cannot be negative")
+    @Column(name = "deposit_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal depositAmount;
+
     @NotNull(message = "Reservation status is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReservationStatus status = ReservationStatus.PENDING;
+
 
     public Reservation() {
     }
@@ -122,4 +128,9 @@ public class Reservation {
     public void setStatus(ReservationStatus status) {
         this.status = status;
     }
+
+    public BigDecimal getDepositAmount() { return depositAmount; }
+
+    public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
+
 }
