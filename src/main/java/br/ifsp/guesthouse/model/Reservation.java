@@ -39,7 +39,7 @@ public class Reservation {
 
     @NotNull(message = "Guest is required")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_account_id", nullable = false)
+    @JoinColumn(name = "guest_id", nullable = false)
     private UserAccount guest;
 
     @NotNull(message = "Start date is required")

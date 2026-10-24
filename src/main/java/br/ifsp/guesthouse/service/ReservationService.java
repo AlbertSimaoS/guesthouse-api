@@ -1,23 +1,21 @@
 package br.ifsp.guesthouse.service;
 
-import br.ifsp.guesthouse.dto.AvailabilityResponseDTO;
-import br.ifsp.guesthouse.dto.ReservationRequestDTO;
-import br.ifsp.guesthouse.dto.ReservationResponseDTO;
+import br.ifsp.guesthouse.dto.*;
 import br.ifsp.guesthouse.exception.ResourceNotFoundException;
 import br.ifsp.guesthouse.model.Reservation;
-import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
 import br.ifsp.guesthouse.repository.UserAccountRepository;
-import br.ifsp.guesthouse.dto.PaymentResponseDTO;
 import br.ifsp.guesthouse.model.enums.PaymentStatus;
 import br.ifsp.guesthouse.model.enums.PaymentType;
 
 import jakarta.validation.Valid;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -242,5 +240,39 @@ public class ReservationService {
                 saved.getDepositAmount(),
                 saved.getStatus()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDTO<ReservationResponseDTO> getMyReservations(
+            Pageable pageable
+    ) {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || "anonymousUser".equals(authentication.getName())) {
+            throw new IllegalArgumentException(
+                    "An authenticated user is required."
+            );
+        }
+
+        Long userId;
+
+        try {
+            userId = Long.valueOf(authentication.getName());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Invalid authenticated user ID."
+            );
+        }
+
+        Page<ReservationResponseDTO> reservations =
+                reservationRepository
+                        .findByGuestId(userId, pageable)
+                        .map(ReservationResponseDTO::from);
+
+        return PageResponseDTO.from(reservations);
     }
 }
