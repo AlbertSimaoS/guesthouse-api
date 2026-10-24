@@ -58,4 +58,19 @@ public class ReservationController {
 
         return ResponseEntity.ok(response);
     }
+
+    @Operation(
+            summary = "Cancel a reservation",
+            description = "Cancels a reservation and applies the deposit refund policy."
+    )
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<ReservationResponseDTO> cancelReservation(
+            @PathVariable Long id
+    ) {
+
+        ReservationResponseDTO response =
+                reservationService.cancelReservation(id);
+
+        return ResponseEntity.ok(response);
+    }
 }

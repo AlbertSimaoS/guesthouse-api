@@ -83,4 +83,40 @@ public class PaymentService {
 
         paymentRepository.saveAll(payments);
     }
+
+    @Transactional
+    public void cancelDepositPayment(
+            Long reservationId,
+            boolean eligibleForRefund
+    ) {
+        Payment payment = paymentRepository
+                .findByReservationIdAndType(
+                        reservationId,
+                        PaymentType.DEPOSIT
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Deposit payment not found."
+                        ));
+
+        if (payment.getStatus() == PaymentStatus.PENDING) {
+
+            payment.setStatus(PaymentStatus.CANCELLED);
+
+        } else if (payment.getStatus() == PaymentStatus.CONFIRMED) {
+
+            if (eligibleForRefund) {
+                payment.setStatus(PaymentStatus.REFUNDED);
+            } else {
+                payment.setStatus(PaymentStatus.RETAINED);
+            }
+
+        } else {
+            throw new IllegalStateException(
+                    "Deposit payment cannot be cancelled."
+            );
+        }
+
+        paymentRepository.save(payment);
+    }
 }
