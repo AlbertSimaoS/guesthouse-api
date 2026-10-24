@@ -1,4 +1,3 @@
-
 package br.ifsp.guesthouse.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;

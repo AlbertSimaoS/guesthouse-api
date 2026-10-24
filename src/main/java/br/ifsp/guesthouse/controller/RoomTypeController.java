@@ -1,17 +1,17 @@
 package br.ifsp.guesthouse.controller;
 
-import br.ifsp.guesthouse.dto.RoomTypeRequestDTO;
-import br.ifsp.guesthouse.dto.RoomTypeResponseDTO;
+import br.ifsp.guesthouse.dto.*;
+import br.ifsp.guesthouse.service.AvailabilityService;
 import br.ifsp.guesthouse.service.RoomTypeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(
         name = "Room types",
@@ -21,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/room-types")
 public class RoomTypeController {
     private final RoomTypeService roomTypeService;
+    private final AvailabilityService availabilityService;
 
-    public RoomTypeController(RoomTypeService roomTypeService) {
+    public RoomTypeController(RoomTypeService roomTypeService, AvailabilityService availabilityService) {
         this.roomTypeService = roomTypeService;
+        this.availabilityService = availabilityService;
     }
 
     @Operation(
@@ -37,5 +39,27 @@ public class RoomTypeController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @Operation(
+            summary = "Find available rooms",
+            description = "Retrieves a paginated list of available rooms based on the requested check-in date, check-out date, and number of guests."
+    )
+    @GetMapping("/availability")
+    public ResponseEntity<PageResponseDTO<AvailabilityResponseDTO>>
+    availableRoomTypes(
+            @Valid @ModelAttribute AvailabilityRequestDTO request,
+            Pageable pageable
+    ) {
+        List<AvailabilityResponseDTO> availableRoomTypes =
+                availabilityService.availableRoomTypes(request);
+
+        PageResponseDTO<AvailabilityResponseDTO> response =
+                availabilityService.paginateAvailableRoomTypes(
+                        availableRoomTypes,
+                        pageable
+                );
+
+        return ResponseEntity.ok(response);
     }
 }

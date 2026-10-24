@@ -27,9 +27,13 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Room is required")
+    @NotNull(message = "Room type is required")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
+    @JoinColumn(name = "room_type_id", nullable = false)
+    private RoomType roomType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_id", nullable = true)
     private Room room;
 
     @NotNull(message = "Guest is required")
@@ -37,13 +41,13 @@ public class Reservation {
     @JoinColumn(name = "user_account_id", nullable = false)
     private UserAccount guest;
 
-    @NotNull(message = "Check-in date is required")
-    @Column(name = "check_in", nullable = false)
-    private LocalDate checkIn;
+    @NotNull(message = "Start date is required")
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
-    @NotNull(message = "Check-out date is required")
-    @Column(name = "check_out", nullable = false)
-    private LocalDate checkOut;
+    @NotNull(message = "End date is required")
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
 
     @NotNull(message = "Number of guests is required")
     @Positive(message = "Number of guests must be positive")
@@ -56,7 +60,7 @@ public class Reservation {
     private BigDecimal totalPrice;
 
     @NotNull(message = "Deposit amount is required")
-    @PositiveOrZero(message = "Total price cannot be negative")
+    @PositiveOrZero(message = "Deposit amount cannot be negative")
     @Column(name = "deposit_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal depositAmount;
 
@@ -65,12 +69,19 @@ public class Reservation {
     @Column(nullable = false, length = 20)
     private ReservationStatus status = ReservationStatus.PENDING;
 
-
     public Reservation() {
     }
 
     public Long getId() {
         return id;
+    }
+
+    public RoomType getRoomType() {
+        return roomType;
+    }
+
+    public void setRoomType(RoomType roomType) {
+        this.roomType = roomType;
     }
 
     public Room getRoom() {
@@ -89,20 +100,20 @@ public class Reservation {
         this.guest = guest;
     }
 
-    public LocalDate getCheckIn() {
-        return checkIn;
+    public LocalDate getStartDate() {
+        return startDate;
     }
 
-    public void setCheckIn(LocalDate checkIn) {
-        this.checkIn = checkIn;
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
     }
 
-    public LocalDate getCheckOut() {
-        return checkOut;
+    public LocalDate getEndDate() {
+        return endDate;
     }
 
-    public void setCheckOut(LocalDate checkOut) {
-        this.checkOut = checkOut;
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
     }
 
     public Integer getNumberOfGuests() {
@@ -121,6 +132,14 @@ public class Reservation {
         this.totalPrice = totalPrice;
     }
 
+    public BigDecimal getDepositAmount() {
+        return depositAmount;
+    }
+
+    public void setDepositAmount(BigDecimal depositAmount) {
+        this.depositAmount = depositAmount;
+    }
+
     public ReservationStatus getStatus() {
         return status;
     }
@@ -128,9 +147,4 @@ public class Reservation {
     public void setStatus(ReservationStatus status) {
         this.status = status;
     }
-
-    public BigDecimal getDepositAmount() { return depositAmount; }
-
-    public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
-
 }

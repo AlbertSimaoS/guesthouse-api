@@ -1,7 +1,6 @@
 package br.ifsp.guesthouse.controller;
 
-import br.ifsp.guesthouse.dto.ReservationRequestDTO;
-import br.ifsp.guesthouse.dto.ReservationResponseDTO;
+import br.ifsp.guesthouse.dto.*;
 import br.ifsp.guesthouse.service.ReservationService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,7 +9,6 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(

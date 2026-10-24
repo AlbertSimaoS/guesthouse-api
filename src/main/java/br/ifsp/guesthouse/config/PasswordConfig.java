@@ -1,4 +1,3 @@
-
 package br.ifsp.guesthouse.config;
 
 import org.springframework.context.annotation.Bean;

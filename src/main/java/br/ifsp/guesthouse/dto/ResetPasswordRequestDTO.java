@@ -14,5 +14,4 @@ public record ResetPasswordRequestDTO(
 
         @NotBlank(message = "Password confirmation is required")
         String confirmPassword
-
 ) {}

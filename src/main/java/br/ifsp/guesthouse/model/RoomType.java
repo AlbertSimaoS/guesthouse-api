@@ -1,10 +1,12 @@
 package br.ifsp.guesthouse.model;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -13,6 +15,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "room_types")
@@ -35,6 +39,9 @@ public class RoomType {
     @DecimalMin(value = "0.01", message = "Daily rate must be greater than zero")
     @Column(name = "daily_rate", nullable = false, precision = 10, scale = 2)
     private BigDecimal dailyRate;
+
+    @OneToMany(mappedBy = "type", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Room> rooms = new ArrayList<>();
 
     public RoomType() {
     }
@@ -65,5 +72,13 @@ public class RoomType {
 
     public void setDailyRate(BigDecimal dailyRate) {
         this.dailyRate = dailyRate;
+    }
+
+    public List<Room> getRooms() {
+        return rooms;
+    }
+
+    public void setRooms(List<Room> rooms) {
+        this.rooms = rooms;
     }
 }
