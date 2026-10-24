@@ -56,12 +56,12 @@ public class ReservationService {
     public ReservationResponseDTO createReservation(
             @Valid ReservationRequestDTO request
     ) {
-        LocalDate checkIn = request.checkIn();
-        LocalDate checkOut = request.checkOut();
+        LocalDate startDate = request.startDate();
+        LocalDate endDate = request.endDate();
         Integer guests = request.numberOfGuests();
         Integer roomTypeId = request.roomTypeId();
 
-        availabilityService.validatePeriod(checkIn, checkOut);
+        availabilityService.validatePeriod(startDate, endDate);
 
         if (guests == null || guests <= 0) {
             throw new IllegalArgumentException(
@@ -76,8 +76,8 @@ public class ReservationService {
         }
 
         availabilityService.validateHighSeasonMinimumStay(
-                checkIn,
-                checkOut
+                startDate,
+                endDate
         );
 
         Authentication authentication =
@@ -126,8 +126,8 @@ public class ReservationService {
                 availabilityService.findAvailableRooms(
                         roomTypeId,
                         guests,
-                        checkIn,
-                        checkOut
+                        startDate,
+                        endDate
                 );
 
         Room room = availableRooms.stream()
@@ -141,8 +141,8 @@ public class ReservationService {
         BigDecimal totalPrice =
                 availabilityService.calculateStayPrice(
                         roomType,
-                        checkIn,
-                        checkOut
+                        startDate,
+                        endDate
                 );
 
         BigDecimal depositAmount = totalPrice
@@ -153,8 +153,8 @@ public class ReservationService {
 
         reservation.setRoom(room);
         reservation.setGuest(guest);
-        reservation.setCheckIn(checkIn);
-        reservation.setCheckOut(checkOut);
+        reservation.setStartDate(startDate);
+        reservation.setEndDate(endDate);
         reservation.setNumberOfGuests(guests);
         reservation.setTotalPrice(totalPrice);
         reservation.setDepositAmount(depositAmount);
@@ -166,10 +166,11 @@ public class ReservationService {
 
         return new ReservationResponseDTO(
                 saved.getId(),
+                saved.getRoomType().getId(),
                 saved.getRoom().getId(),
                 saved.getGuest().getId(),
-                saved.getCheckIn(),
-                saved.getCheckOut(),
+                saved.getStartDate(),
+                saved.getEndDate(),
                 saved.getNumberOfGuests(),
                 saved.getTotalPrice(),
                 saved.getDepositAmount(),
@@ -238,7 +239,7 @@ public class ReservationService {
             );
         }
 
-        if (!LocalDate.now().isBefore(reservation.getCheckIn())) {
+        if (!LocalDate.now().isBefore(reservation.getStartDate())) {
             throw new IllegalStateException(
                     "Reservations cannot be cancelled on or after check-in."
             );
@@ -246,7 +247,7 @@ public class ReservationService {
 
         long daysUntilCheckIn = ChronoUnit.DAYS.between(
                 LocalDate.now(),
-                reservation.getCheckIn()
+                reservation.getStartDate()
         );
 
         boolean eligibleForRefund = daysUntilCheckIn >= 7;
@@ -262,10 +263,11 @@ public class ReservationService {
 
         return new ReservationResponseDTO(
                 saved.getId(),
+                saved.getRoomType().getId(),
                 saved.getRoom().getId(),
                 saved.getGuest().getId(),
-                saved.getCheckIn(),
-                saved.getCheckOut(),
+                saved.getStartDate(),
+                saved.getEndDate(),
                 saved.getNumberOfGuests(),
                 saved.getTotalPrice(),
                 saved.getDepositAmount(),

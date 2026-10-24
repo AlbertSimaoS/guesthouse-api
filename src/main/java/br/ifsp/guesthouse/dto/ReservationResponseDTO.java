@@ -7,10 +7,11 @@ import java.time.LocalDate;
 
 public record ReservationResponseDTO(
         Long id,
+        Integer roomTypeId,
         Integer roomId,
         Long userId,
-        LocalDate checkIn,
-        LocalDate checkOut,
+        LocalDate startDate,
+        LocalDate endDate,
         Integer numberOfGuests,
         BigDecimal totalPrice,
         BigDecimal depositAmount,
