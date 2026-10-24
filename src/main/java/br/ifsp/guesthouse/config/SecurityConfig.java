@@ -59,7 +59,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/room/availability"
+                                "/room-types/availability"
                         ).permitAll()
 
                         .requestMatchers(
@@ -79,6 +79,11 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/reservation"
                         ).hasRole("GUEST")
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/payments/*"
+                        ).hasRole("RECEPTION")
 
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()

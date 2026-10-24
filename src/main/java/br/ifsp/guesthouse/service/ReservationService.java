@@ -1,5 +1,6 @@
 package br.ifsp.guesthouse.service;
 
+import br.ifsp.guesthouse.dto.AvailabilityResponseDTO;
 import br.ifsp.guesthouse.dto.ReservationRequestDTO;
 import br.ifsp.guesthouse.dto.ReservationResponseDTO;
 import br.ifsp.guesthouse.exception.ResourceNotFoundException;
@@ -58,22 +59,10 @@ public class ReservationService {
     ) {
         LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
-        Integer guests = request.numberOfGuests();
+        Integer numberOfGuests = request.numberOfGuests();
         Integer roomTypeId = request.roomTypeId();
 
         availabilityService.validatePeriod(startDate, endDate);
-
-        if (guests == null || guests <= 0) {
-            throw new IllegalArgumentException(
-                    "The number of guests must be positive."
-            );
-        }
-
-        if (roomTypeId == null) {
-            throw new IllegalArgumentException(
-                    "Room type is required."
-            );
-        }
 
         availabilityService.validateHighSeasonMinimumStay(
                 startDate,
@@ -116,34 +105,24 @@ public class ReservationService {
                         )
                 );
 
-        if (roomType.getCapacity() < guests) {
+        if (roomType.getCapacity() < numberOfGuests) {
             throw new IllegalArgumentException(
                     "The selected room type does not have enough capacity."
             );
         }
 
-        List<Room> availableRooms =
-                availabilityService.findAvailableRooms(
-                        roomTypeId,
-                        guests,
-                        startDate,
-                        endDate
-                );
+        List<AvailabilityResponseDTO> availableRoomsTypes = availabilityService.buildAvailableRoomTypeList(
+                startDate,
+                endDate,
+                numberOfGuests
+        );
 
-        Room room = availableRooms.stream()
+        AvailabilityResponseDTO selectedRoomType = availableRoomsTypes.stream()
+                .filter(room -> room.roomTypeId().equals(roomTypeId))
                 .findFirst()
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No available room found for the selected type and period."
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException("Room type not available for the selected dates."));
 
-        BigDecimal totalPrice =
-                availabilityService.calculateStayPrice(
-                        roomType,
-                        startDate,
-                        endDate
-                );
+        BigDecimal totalPrice = selectedRoomType.totalStayPrice();
 
         BigDecimal depositAmount = totalPrice
                 .multiply(new BigDecimal("0.30"))
@@ -151,11 +130,12 @@ public class ReservationService {
 
         Reservation reservation = new Reservation();
 
-        reservation.setRoom(room);
+        reservation.setRoomType(roomType);
+        reservation.setRoom(null);
         reservation.setGuest(guest);
         reservation.setStartDate(startDate);
         reservation.setEndDate(endDate);
-        reservation.setNumberOfGuests(guests);
+        reservation.setNumberOfGuests(numberOfGuests);
         reservation.setTotalPrice(totalPrice);
         reservation.setDepositAmount(depositAmount);
         reservation.setStatus(ReservationStatus.PENDING);
@@ -164,18 +144,7 @@ public class ReservationService {
 
         paymentService.createDepositPayment(saved);
 
-        return new ReservationResponseDTO(
-                saved.getId(),
-                saved.getRoomType().getId(),
-                saved.getRoom().getId(),
-                saved.getGuest().getId(),
-                saved.getStartDate(),
-                saved.getEndDate(),
-                saved.getNumberOfGuests(),
-                saved.getTotalPrice(),
-                saved.getDepositAmount(),
-                saved.getStatus()
-        );
+        return ReservationResponseDTO.from(saved);
     }
 
     @Transactional

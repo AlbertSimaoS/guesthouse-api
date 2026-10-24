@@ -19,11 +19,9 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/room")
 public class RoomController {
     private final RoomService roomService;
-    private final AvailabilityService availabilityService;
 
-    public RoomController(RoomService roomService, AvailabilityService availabilityService) {
+    public RoomController(RoomService roomService) {
         this.roomService = roomService;
-        this.availabilityService = availabilityService;
     }
 
     @Operation(
@@ -37,19 +35,5 @@ public class RoomController {
         return  ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
-    }
-
-    @Operation(
-            summary = "Find available rooms",
-            description = "Retrieves a paginated list of available rooms based on the requested check-in date, check-out date, and number of guests."
-    )
-    @GetMapping("/availability")
-    public ResponseEntity<PageResponseDTO<RoomAvailabilityResponseDTO>> findAvailableRooms(
-            @Valid @ModelAttribute AvailabilityRequestDTO request,
-            Pageable pageable
-    ) {
-        return ResponseEntity.ok(
-                availabilityService.findAvailableRooms(request, pageable)
-        );
     }
 }

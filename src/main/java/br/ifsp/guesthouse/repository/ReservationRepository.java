@@ -8,7 +8,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 
 public interface ReservationRepository
@@ -17,5 +16,19 @@ public interface ReservationRepository
     List<Reservation> findByStatusAndCreatedAtBefore(
             ReservationStatus status,
             LocalDateTime dateTime
+    );
+
+    @Query("""
+            SELECT COUNT(res) FROM Reservation res
+            WHERE res.roomType.id = :roomTypeId
+              AND res.status IN :statuses
+              AND res.startDate < :endDate
+              AND res.endDate > :startDate
+            """)
+    long countBlockingReservations(
+            @Param("roomTypeId") Integer roomTypeId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") List<ReservationStatus> statuses
     );
 }

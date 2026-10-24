@@ -1,4 +1,3 @@
-
 package br.ifsp.guesthouse.dto;
 
 import jakarta.validation.constraints.Email;

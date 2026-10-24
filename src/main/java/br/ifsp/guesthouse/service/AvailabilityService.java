@@ -2,12 +2,13 @@ package br.ifsp.guesthouse.service;
 
 import br.ifsp.guesthouse.dto.PageResponseDTO;
 import br.ifsp.guesthouse.dto.AvailabilityRequestDTO;
-import br.ifsp.guesthouse.dto.RoomAvailabilityResponseDTO;
-import br.ifsp.guesthouse.model.Room;
+import br.ifsp.guesthouse.dto.AvailabilityResponseDTO;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.Season;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
+import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomRepository;
+import br.ifsp.guesthouse.repository.RoomTypeRepository;
 import br.ifsp.guesthouse.repository.SeasonRepository;
 
 import org.springframework.data.domain.Page;
@@ -22,123 +23,118 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class AvailabilityService {
 
 	private final RoomRepository roomRepository;
 	private final SeasonRepository seasonRepository;
+	private final RoomTypeRepository roomTypeRepository;
+	private final ReservationRepository reservationRepository;
 
 	public AvailabilityService(
-			RoomRepository roomRepository,
-			SeasonRepository seasonRepository
-	) {
+            RoomRepository roomRepository,
+            SeasonRepository seasonRepository, RoomTypeRepository roomTypeRepository, ReservationRepository reservationRepository
+    ) {
 		this.roomRepository = roomRepository;
 		this.seasonRepository = seasonRepository;
-	}
+        this.roomTypeRepository = roomTypeRepository;
+        this.reservationRepository = reservationRepository;
+    }
+
 
 	@Transactional(readOnly = true)
-	public PageResponseDTO<RoomAvailabilityResponseDTO> findAvailableRooms(
-			AvailabilityRequestDTO request,
-			Pageable pageable
+	public List<AvailabilityResponseDTO> availableRoomTypes(
+			AvailabilityRequestDTO request
 	) {
-		LocalDate checkIn = request.checkIn();
-		LocalDate checkOut = request.checkOut();
-		Integer guests = request.guests();
+		LocalDate startDate = request.startDate();
+		LocalDate endDate = request.endDate();
+		Integer numberOfGuests = request.numberOfGuests();
 
-		validatePeriod(checkIn, checkOut);
+		validatePeriod(startDate, endDate);
 
-		List<RoomAvailabilityResponseDTO> availableRooms =
-				availableRoomsList(null, checkIn, checkOut, guests);
-
-		return paginateAvailableRooms(availableRooms, pageable);
+		return buildAvailableRoomTypeList(
+				startDate,
+				endDate,
+				numberOfGuests
+		);
 	}
 
-	@Transactional(readOnly = true)
-	public List<Room> findAvailableRooms(
-			Integer roomTypeId,
-			Integer guests,
-			LocalDate checkIn,
-			LocalDate checkOut
-	) {
-		validatePeriod(checkIn, checkOut);
 
-		if (guests == null || guests <= 0) {
-			throw new IllegalArgumentException(
-					"The number of guests must be positive."
-			);
-		}
-
+	List<AvailabilityResponseDTO> buildAvailableRoomTypeList(
+            LocalDate startDate,
+            LocalDate endDate,
+            Integer numberOfguests
+    ) {
 		List<ReservationStatus> blockingStatuses = List.of(
-				ReservationStatus.PENDING,
-				ReservationStatus.CONFIRMED
+				ReservationStatus.CONFIRMED,
+				ReservationStatus.CHECKED_IN,
+				ReservationStatus.PENDING
 		);
 
-		List<Room> availableRooms =
-				roomRepository.findAvailableRoomsUnpaged(
-						checkIn,
-						checkOut,
-						guests,
+		List<RoomType> availableRoomTypes =
+				roomTypeRepository.findAvailableRoomTypes(
+						startDate,
+						endDate,
+						numberOfguests,
 						blockingStatuses
 				);
 
-		if (roomTypeId == null) {
-			return availableRooms;
-		}
+		return availableRoomTypes.stream()
+				.map(type -> {
+					Integer totalPhysicalRooms = roomRepository.countByType(type);
 
-		return availableRooms.stream()
-				.filter(room ->
-						room.getType().getId() == roomTypeId
-				)
-				.toList();
-	}
+					long reservedRooms = reservationRepository.countBlockingReservations(
+							type.getId(),
+							startDate,
+							endDate,
+							blockingStatuses
+					);
 
-	private List<RoomAvailabilityResponseDTO> availableRoomsList(
-			Integer roomTypeId,
-			LocalDate checkIn,
-			LocalDate checkOut,
-			Integer guests
-	) {
-		List<Room> availableRooms = findAvailableRooms(
-				roomTypeId,
-				guests,
-				checkIn,
-				checkOut
-		);
-
-		Map<Integer, List<Room>> roomsByType =
-				availableRooms.stream()
-						.collect(Collectors.groupingBy(
-								room -> room.getType().getId()
-						));
-
-		return roomsByType.values().stream()
-				.map(rooms -> {
-					RoomType type = rooms.get(0).getType();
-
-					Integer availableRoomsCount = rooms.size();
+					int availableRooms = (int) (totalPhysicalRooms - reservedRooms);
 
 					BigDecimal totalStayPrice = calculateStayPrice(
 							type,
-							checkIn,
-							checkOut
+							startDate,
+							endDate
 					);
 
-					return new RoomAvailabilityResponseDTO(
-							type.getId(),
-							type.getName(),
-							type.getCapacity(),
-							availableRoomsCount,
-							type.getDailyRate(),
-							totalStayPrice
-					);
+					return AvailabilityResponseDTO.from(type, availableRooms, totalStayPrice);
 				})
 				.sorted(Comparator.comparing(
-						RoomAvailabilityResponseDTO::roomTypeName
+						AvailabilityResponseDTO::roomTypeName
 				))
 				.toList();
+	}
+
+	public PageResponseDTO<AvailabilityResponseDTO>
+	paginateAvailableRoomTypes(
+			List<AvailabilityResponseDTO> availableRoomTypes,
+			Pageable pageable
+	) {
+		int page = pageable.getPageNumber();
+		int size = pageable.getPageSize();
+
+		int fromIndex = (int) Math.min(
+				(long) page * size,
+				availableRoomTypes.size()
+		);
+
+		int toIndex = (int) Math.min(
+				(long) fromIndex + size,
+				availableRoomTypes.size()
+		);
+
+		List<AvailabilityResponseDTO> pageContent =
+				availableRoomTypes.subList(fromIndex, toIndex);
+
+		Page<AvailabilityResponseDTO> resultPage = new PageImpl<>(
+				pageContent,
+				pageable,
+				availableRoomTypes.size()
+		);
+
+		return PageResponseDTO.from(resultPage);
 	}
 
 	@Transactional(readOnly = true)
@@ -180,7 +176,7 @@ public class AvailabilityService {
 		long nights = ChronoUnit.DAYS.between(checkIn, checkOut);
 
 		boolean includesHighSeason = seasonRepository
-				.findAllByStartDateLessThanAndEndDateGreaterThan(
+				.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
 						checkOut,
 						checkIn
 				)
@@ -196,35 +192,6 @@ public class AvailabilityService {
 					"Reservations during Alta Temporada must be at least 2 nights."
 			);
 		}
-	}
-
-	private PageResponseDTO<RoomAvailabilityResponseDTO> paginateAvailableRooms(
-			List<RoomAvailabilityResponseDTO> availableRooms,
-			Pageable pageable
-	) {
-		int page = pageable.getPageNumber();
-		int size = pageable.getPageSize();
-
-		int fromIndex = (int) Math.min(
-				(long) page * size,
-				availableRooms.size()
-		);
-
-		int toIndex = (int) Math.min(
-				(long) fromIndex + size,
-				availableRooms.size()
-		);
-
-		List<RoomAvailabilityResponseDTO> pageContent =
-				availableRooms.subList(fromIndex, toIndex);
-
-		Page<RoomAvailabilityResponseDTO> resultPage = new PageImpl<>(
-				pageContent,
-				pageable,
-				availableRooms.size()
-		);
-
-		return PageResponseDTO.from(resultPage);
 	}
 
 	public void validatePeriod(
