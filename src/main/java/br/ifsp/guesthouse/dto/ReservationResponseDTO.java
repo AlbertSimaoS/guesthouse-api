@@ -13,5 +13,6 @@ public record ReservationResponseDTO(
         LocalDate checkOut,
         Integer numberOfGuests,
         BigDecimal totalPrice,
+        BigDecimal depositAmount,
         ReservationStatus status
 ) {}

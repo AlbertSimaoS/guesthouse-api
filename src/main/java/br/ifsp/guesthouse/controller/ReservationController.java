@@ -31,7 +31,7 @@ public class ReservationController {
             summary = "Create a reservation",
             description = "Creates a new reservation for the authenticated guest, validates the reservation details, and returns the created reservation information."
     )
-    @PostMapping
+    @PostMapping()
     public ResponseEntity<ReservationResponseDTO> createReservation(
 		@Valid @RequestBody 
 		ReservationRequestDTO request

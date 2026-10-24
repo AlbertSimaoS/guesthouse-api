@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
-public record RoomTypeRequestDTO(
+public record   RoomTypeRequestDTO(
 
         @NotBlank(message = "Room type name is required")
         @Size(max = 100, message = "Room type name must not exceed 100 characters")
