@@ -29,9 +29,4 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
             LocalDate dateForStart,
             LocalDate dateForEnd
     );
-
-    List<Season> findAllByStartDateLessThanAndEndDateGreaterThan(
-            LocalDate checkOut,
-            LocalDate checkIn
-    );
 }
