@@ -3,8 +3,9 @@ package br.ifsp.guesthouse.model.enums;
 public enum ReservationStatus {
     PENDING,
     CONFIRMED,
-    CANCELLED,
     EXPIRED,
-    CHECK_IN,
-    COMPLETED
+    NO_SHOW,
+    CANCELLED,
+    CHECKED_IN,
+    FINISHED
 }

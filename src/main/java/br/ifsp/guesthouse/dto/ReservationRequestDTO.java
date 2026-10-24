@@ -11,12 +11,12 @@ public record ReservationRequestDTO(
         @Positive(message = "RoomType ID must be positive")
         Integer roomTypeId,
 
-        @NotNull(message = "Check-in date is required")
-        @Future(message = "Check-in date must be in the future")
+        @NotNull(message = "Start date is required")
+        @Future(message = "Start date must be in the future")
         LocalDate startDate,
 
-        @NotNull(message = "End date date is required")
-        @Future(message = "End date date must be in the future")
+        @NotNull(message = "End date is required")
+        @Future(message = "End date must be in the future")
         LocalDate endDate,
 
         @NotNull(message = "Number of guests is required")

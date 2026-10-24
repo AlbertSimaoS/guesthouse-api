@@ -61,7 +61,7 @@ public class Reservation {
     private BigDecimal totalPrice;
 
     @NotNull(message = "Deposit amount is required")
-    @PositiveOrZero(message = "Total price cannot be negative")
+    @PositiveOrZero(message = "Deposit amount cannot be negative")
     @Column(name = "deposit_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal depositAmount;
 
@@ -80,9 +80,13 @@ public class Reservation {
         return id;
     }
 
-    public RoomType getRoomType() { return roomType; }
+    public RoomType getRoomType() {
+        return roomType;
+    }
 
-    public void setRoomType(RoomType roomType) { this.roomType = roomType; }
+    public void setRoomType(RoomType roomType) {
+        this.roomType = roomType;
+    }
 
     public Room getRoom() {
         return room;
@@ -128,6 +132,14 @@ public class Reservation {
         this.totalPrice = totalPrice;
     }
 
+    public BigDecimal getDepositAmount() {
+        return depositAmount;
+    }
+
+    public void setDepositAmount(BigDecimal depositAmount) {
+        this.depositAmount = depositAmount;
+    }
+
     public ReservationStatus getStatus() {
         return status;
     }
@@ -135,10 +147,6 @@ public class Reservation {
     public void setStatus(ReservationStatus status) {
         this.status = status;
     }
-
-    public BigDecimal getDepositAmount() { return depositAmount; }
-
-    public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 

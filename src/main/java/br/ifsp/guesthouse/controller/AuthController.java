@@ -1,4 +1,3 @@
-
 package br.ifsp.guesthouse.controller;
 
 import br.ifsp.guesthouse.dto.LoginRequestDTO;
@@ -43,10 +42,10 @@ public class AuthController {
     )
     @PostMapping("/register")
     public ResponseEntity<RegisterResponseDTO> register(
-            @Valid @RequestBody RegisterRequestDTO dto
+            @Valid @RequestBody RegisterRequestDTO request
     ) {
 
-        UserAccount user = userService.register(dto);
+        UserAccount user = userService.register(request);
 
         RegisterResponseDTO response = RegisterResponseDTO.fromEntity(user);
 
@@ -60,7 +59,8 @@ public class AuthController {
             description = "Authenticates a user using their email and password. If the credentials are valid, returns a JWT access token, its type (Bearer), and the user's information."
     )
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
+    public ResponseEntity<LoginResponseDTO> login(
+            @Valid @RequestBody LoginRequestDTO request) {
         UserAccount user = authService.authenticate(
                 request.email(),
                 request.password()
@@ -68,14 +68,11 @@ public class AuthController {
 
         String token = jwtService.generateToken(user.getId());
 
-        RegisterResponseDTO response = RegisterResponseDTO.fromEntity(user);
-
-        LoginResponseDTO loginResponseDTO = new LoginResponseDTO(
+        LoginResponseDTO response = LoginResponseDTO.fromEntity(
                 token,
-                "Bearer",
-                response
+                user
         );
 
-        return ResponseEntity.ok(loginResponseDTO);
+        return ResponseEntity.ok(response);
     }
 }
