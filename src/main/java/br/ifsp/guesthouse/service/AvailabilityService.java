@@ -65,12 +65,6 @@ public class AvailabilityService {
 	) {
 		validatePeriod(checkIn, checkOut);
 
-		if (guests == null || guests <= 0) {
-			throw new IllegalArgumentException(
-					"The number of guests must be positive."
-			);
-		}
-
 		List<ReservationStatus> blockingStatuses = List.of(
 				ReservationStatus.PENDING,
 				ReservationStatus.CONFIRMED
@@ -180,7 +174,7 @@ public class AvailabilityService {
 		long nights = ChronoUnit.DAYS.between(checkIn, checkOut);
 
 		boolean includesHighSeason = seasonRepository
-				.findAllByStartDateLessThanAndEndDateGreaterThan(
+				.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
 						checkOut,
 						checkIn
 				)
