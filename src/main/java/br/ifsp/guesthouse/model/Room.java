@@ -17,6 +17,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "rooms")
 public class Room {
@@ -39,6 +41,9 @@ public class Room {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RoomStatus status = RoomStatus.AVAILABLE;
+
+    @Column(name = "status_updated_at")
+    private LocalDateTime statusUpdatedAt;
 
     public Room() {
     }
@@ -69,5 +74,14 @@ public class Room {
 
     public void setStatus(RoomStatus status) {
         this.status = status;
+        this.statusUpdatedAt = LocalDateTime.now();
+    }
+
+    public LocalDateTime getStatusUpdatedAt() {
+        return statusUpdatedAt;
+    }
+
+    public void setStatusUpdatedAt(LocalDateTime statusUpdatedAt) {
+        this.statusUpdatedAt = statusUpdatedAt;
     }
 }

@@ -82,7 +82,8 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.PATCH,
-                                "/payments/*"
+                                "/payments/*",
+                                "/room/*/update-status"
                         ).hasRole("RECEPTION")
 
                         .requestMatchers("/error").permitAll()
