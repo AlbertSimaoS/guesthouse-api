@@ -18,6 +18,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "reservations")
@@ -69,6 +70,9 @@ public class Reservation {
     @Column(nullable = false, length = 20)
     private ReservationStatus status = ReservationStatus.PENDING;
 
+    @Column(nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
     public Reservation() {
     }
 
@@ -108,13 +112,9 @@ public class Reservation {
         this.startDate = startDate;
     }
 
-    public LocalDate getEndDate() {
-        return endDate;
-    }
+    public LocalDate getEndDate() { return endDate; }
 
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
+    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
 
     public Integer getNumberOfGuests() {
         return numberOfGuests;
@@ -147,4 +147,7 @@ public class Reservation {
     public void setStatus(ReservationStatus status) {
         this.status = status;
     }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+
 }

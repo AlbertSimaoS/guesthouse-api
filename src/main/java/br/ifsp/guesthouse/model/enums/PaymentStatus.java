@@ -2,5 +2,9 @@ package br.ifsp.guesthouse.model.enums;
 
 public enum PaymentStatus {
     PENDING,
-    CONFIRMED
+    CONFIRMED,
+    REFUNDED,
+    RETAINED,
+    EXPIRED,
+    CANCELLED
 }

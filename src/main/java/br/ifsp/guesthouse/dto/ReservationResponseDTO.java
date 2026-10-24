@@ -8,8 +8,9 @@ import java.time.LocalDate;
 
 public record ReservationResponseDTO(
         Long id,
+        Integer roomTypeId,
         Integer roomId,
-        Long guestId,
+        Long userId,
         LocalDate startDate,
         LocalDate endDate,
         Integer numberOfGuests,
