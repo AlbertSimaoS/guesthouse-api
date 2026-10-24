@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -217,5 +218,58 @@ public class ReservationService {
             reservationRepository.save(reservation);
         }
         return reservations.size();
+    }
+
+    @Transactional
+    public ReservationResponseDTO cancelReservation(Long reservationId) {
+
+        Reservation reservation = reservationRepository
+                .findById(reservationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Reservation not found."
+                        ));
+
+        if (reservation.getStatus() != ReservationStatus.PENDING
+                && reservation.getStatus() != ReservationStatus.CONFIRMED) {
+
+            throw new IllegalStateException(
+                    "Only pending or confirmed reservations can be cancelled."
+            );
+        }
+
+        if (!LocalDate.now().isBefore(reservation.getCheckIn())) {
+            throw new IllegalStateException(
+                    "Reservations cannot be cancelled on or after check-in."
+            );
+        }
+
+        long daysUntilCheckIn = ChronoUnit.DAYS.between(
+                LocalDate.now(),
+                reservation.getCheckIn()
+        );
+
+        boolean eligibleForRefund = daysUntilCheckIn >= 7;
+
+        paymentService.cancelDepositPayment(
+                reservation.getId(),
+                eligibleForRefund
+        );
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+
+        Reservation saved = reservationRepository.save(reservation);
+
+        return new ReservationResponseDTO(
+                saved.getId(),
+                saved.getRoom().getId(),
+                saved.getGuest().getId(),
+                saved.getCheckIn(),
+                saved.getCheckOut(),
+                saved.getNumberOfGuests(),
+                saved.getTotalPrice(),
+                saved.getDepositAmount(),
+                saved.getStatus()
+        );
     }
 }
