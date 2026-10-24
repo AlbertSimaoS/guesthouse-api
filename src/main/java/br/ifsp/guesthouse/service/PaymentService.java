@@ -12,6 +12,8 @@ import br.ifsp.guesthouse.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class PaymentService {
 
@@ -64,5 +66,21 @@ public class PaymentService {
                 saved.getStatus(),
                 saved.getCreatedAt()
         );
+    }
+
+    @Transactional
+    public void expirePendingPayments(Long reservationId) {
+
+        List<Payment> payments =
+                paymentRepository.findByReservationIdAndStatus(
+                        reservationId,
+                        PaymentStatus.PENDING
+                );
+
+        for (Payment payment : payments) {
+            payment.setStatus(PaymentStatus.EXPIRED);
+        }
+
+        paymentRepository.saveAll(payments);
     }
 }

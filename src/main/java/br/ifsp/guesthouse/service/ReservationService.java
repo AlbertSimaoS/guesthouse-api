@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -198,5 +199,23 @@ public class ReservationService {
         }
 
         return payment;
+    }
+
+    @Transactional
+    public int expirePendingReservations() {
+        LocalDateTime limit = LocalDateTime.now().minusHours(0); //alterar para 24
+
+        List<Reservation> reservations =
+                reservationRepository.findByStatusAndCreatedAtBefore(
+                        ReservationStatus.PENDING,
+                        limit
+                );
+
+        for (Reservation reservation : reservations) {
+            reservation.setStatus(ReservationStatus.EXPIRED);
+            paymentService.expirePendingPayments(reservation.getId());
+            reservationRepository.save(reservation);
+        }
+        return reservations.size();
     }
 }

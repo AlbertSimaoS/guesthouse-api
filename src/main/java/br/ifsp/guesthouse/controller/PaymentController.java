@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
         description = "Endpoints for managing payments"
 )
 @RestController
-@RequestMapping("/payments")
+@RequestMapping("/payment")
 public class PaymentController {
 
     private final ReservationService reservationService;

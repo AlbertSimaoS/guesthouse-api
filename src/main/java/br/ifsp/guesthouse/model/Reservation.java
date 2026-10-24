@@ -18,6 +18,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "reservations")
@@ -65,6 +66,8 @@ public class Reservation {
     @Column(nullable = false, length = 20)
     private ReservationStatus status = ReservationStatus.PENDING;
 
+    @Column(nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     public Reservation() {
     }
@@ -132,5 +135,7 @@ public class Reservation {
     public BigDecimal getDepositAmount() { return depositAmount; }
 
     public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
 
 }

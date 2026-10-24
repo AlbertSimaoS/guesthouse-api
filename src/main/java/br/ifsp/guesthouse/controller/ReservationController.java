@@ -1,5 +1,6 @@
 package br.ifsp.guesthouse.controller;
 
+import br.ifsp.guesthouse.dto.ExpiredReservationsResponseDTO;
 import br.ifsp.guesthouse.dto.ReservationRequestDTO;
 import br.ifsp.guesthouse.dto.ReservationResponseDTO;
 import br.ifsp.guesthouse.service.ReservationService;
@@ -41,5 +42,20 @@ public class ReservationController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @Operation(
+            summary = "Expire pending reservations",
+            description = "Expires reservations that have been pending for more than 24 hours."
+    )@PatchMapping("/expired")
+    public ResponseEntity<ExpiredReservationsResponseDTO> expireReservations() {
+
+        int expiredCount =
+                reservationService.expirePendingReservations();
+
+        ExpiredReservationsResponseDTO response =
+                new ExpiredReservationsResponseDTO(expiredCount);
+
+        return ResponseEntity.ok(response);
     }
 }
