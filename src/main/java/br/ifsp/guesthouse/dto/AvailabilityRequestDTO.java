@@ -8,16 +8,16 @@ import java.time.LocalDate;
 
 public record AvailabilityRequestDTO(
 
-        @NotNull(message = "Check-in date is required")
-        @Future(message = "Check-in date must be in the future")
-        LocalDate checkIn,
+        @NotNull(message = "Start Date is required")
+        @Future(message = "Start Date date must be in the future")
+        LocalDate startDate,
 
-        @NotNull(message = "Check-out date is required")
-        @Future(message = "Check-out date must be in the future")
-        LocalDate checkOut,
+        @NotNull(message = "End Date is required")
+        @Future(message = "End Date date must be in the future")
+        LocalDate endDate,
 
         @NotNull(message = "Number of guests is required")
         @Positive(message = "Number of guests must be positive")
-        Integer guests
+        Integer numberOfGuests
 ) {
 }
