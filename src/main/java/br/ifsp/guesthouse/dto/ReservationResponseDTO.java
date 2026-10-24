@@ -21,7 +21,10 @@ public record ReservationResponseDTO(
     public static ReservationResponseDTO from(Reservation reservation) {
         return new ReservationResponseDTO(
                 reservation.getId(),
-                reservation.getRoom() != null ? reservation.getRoom().getId() : null,
+                reservation.getRoomType().getId(),
+                reservation.getRoom() != null
+                        ? reservation.getRoom().getId()
+                        : null,
                 reservation.getGuest().getId(),
                 reservation.getStartDate(),
                 reservation.getEndDate(),

@@ -26,7 +26,7 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Integer> {
               WHERE res.roomType = rt
                 AND res.status IN :statuses
                 AND res.startDate <= :endDate
-                AND res.endDate => :startDate
+                AND res.endDate >= :startDate
           )
     """)
     List<RoomType> findAvailableRoomTypes(

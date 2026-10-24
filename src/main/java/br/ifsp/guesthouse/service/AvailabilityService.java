@@ -84,7 +84,7 @@ public class AvailabilityService {
 				.map(type -> {
 					Integer totalPhysicalRooms = roomRepository.countByType(type);
 
-					int reservedRooms = reservationRepository.countBlockingReservations(
+					long reservedRooms = reservationRepository.countBlockingReservations(
 							type.getId(),
 							startDate,
 							endDate,

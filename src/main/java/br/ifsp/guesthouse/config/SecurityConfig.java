@@ -80,6 +80,11 @@ public class SecurityConfig {
                                 "/reservation"
                         ).hasRole("GUEST")
 
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/payments/*"
+                        ).hasRole("RECEPTION")
+
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
