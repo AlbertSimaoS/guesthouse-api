@@ -54,4 +54,33 @@ public interface ReservationRepository
     );
 
     Page<Reservation> findByGuestId(Long guestId, Pageable pageable);
+
+    @Query("""
+        SELECT r FROM Reservation r 
+        WHERE r.status IN :statuses 
+          AND r.startDate <= :endDate 
+          AND r.endDate >= :startDate
+        """)
+    List<Reservation> findActiveReservationsInPeriod(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") List<ReservationStatus> statuses
+    );
+
+    @Query("""
+    SELECT r FROM Reservation r
+    WHERE r.roomType.id = :roomTypeId
+      AND r.status IN :statuses
+      AND r.startDate <= :endDate
+      AND r.endDate >= :startDate
+    """)
+    List<Reservation> findByRoomTypeIdAndPeriod(
+            @Param("roomTypeId") Integer roomTypeId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") List<ReservationStatus> statuses
+    );
+
+    List<Reservation> findByStartDate(LocalDate startDate);
+    List<Reservation> findByEndDate(LocalDate endDate);
 }

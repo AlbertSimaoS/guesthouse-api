@@ -96,6 +96,13 @@ public class    SecurityConfig {
                                 "/reservation/*/checkout"
                         ).hasRole("RECEPTION")
 
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/report/occupancy",
+                                "/report/revenue",
+                                "/report/daily-movements"
+                        ).hasRole("RECEPTION")
+
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
