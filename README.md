@@ -188,21 +188,21 @@ curl 'http://localhost:8080/room-types/availability?startDate=2030-12-20&endDate
 | GET | `/reservation/my-reservations` | GUEST | Lista as reservas do hóspede autenticado (paginado, `id` desc) |
 | PATCH | `/reservation/{id}/cancel` | RECEPTION | Cancela e aplica a política de reembolso do sinal |
 | PATCH | `/reservation/expired` | RECEPTION | Expira reservas pendentes há mais de 24 h |
-| PATCH | `/reservation/{id}/check-in` | RECEPTION | Check-in. Corpo: `{"roomId": 1}` |
-| PATCH | `/reservation/{id}/check-out` | RECEPTION | Check-out; retorna o fechamento da conta (diárias + consumos) |
+| PATCH | `/reservation/{id}/checkin` | RECEPTION | Check-in. Corpo: `{"roomId": 1}` |
+| PATCH | `/reservation/{id}/checkout` | RECEPTION | Check-out; retorna o fechamento da conta (diárias + consumos) |
 
 ### Consumos (`/reservations/{reservationId}/consumptions`)
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
 | POST | `/reservations/{reservationId}/consumptions` | RECEPTION | Lança consumo (`type`: `MINIBAR`, `RESTAURANT` ou `LAUNDRY`; `description`; `amount` ≥ 0,01) |
-| GET | `/reservations/{reservationId}/consumptions` | Autenticado | Lista consumos da reserva (paginado) |
+| GET | `/reservations/{reservationId}/consumptions` | GUEST | Lista consumos da reserva (paginado) |
 
 ### Pagamentos (`/payments`)
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| PATCH | `/payments/{id}` | RECEPTION | Atualiza status de pagamento pendente. Corpo: `{"status": "PENDING \| CONFIRMED \| REFUNDED \| RETAINED \| EXPIRED \| CANCELLED"}`. Confirmar o sinal confirma a reserva |
+| PATCH | `/payments/{id}` | RECEPTION | Atualiza status de pagamento pendente. Corpo: `{"status": "CONFIRMED"}`. Confirmar o sinal confirma a reserva |
 
 ### Relatórios (`/report`) – RECEPTION
 
