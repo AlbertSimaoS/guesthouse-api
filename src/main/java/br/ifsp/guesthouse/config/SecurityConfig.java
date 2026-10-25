@@ -64,7 +64,8 @@ public class    SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/reservation/my-reservations"
+                                "/reservation/my-reservations",
+                                "/reservations/*/consumptions"
                         ).hasRole("GUEST")
 
                         .requestMatchers(

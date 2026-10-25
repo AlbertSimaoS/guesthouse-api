@@ -16,7 +16,7 @@ public interface ConsumptionRepository
     Page<Consumption> findByReservationId(Long reservationId, Pageable pageable);
 
     @Query("""
-    SELECT SUM(c.amount)
+    SELECT COALESCE(SUM(c.amount), 0)
     FROM Consumption c
     WHERE c.reservation.id = :reservationId
 """)

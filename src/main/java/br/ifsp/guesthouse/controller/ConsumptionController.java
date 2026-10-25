@@ -5,6 +5,7 @@ import br.ifsp.guesthouse.dto.ConsumptionResponseDTO;
 import br.ifsp.guesthouse.dto.PageResponseDTO;
 import br.ifsp.guesthouse.service.ConsumptionService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -15,6 +16,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(
+        name = "Consumptions",
+        description = "Endpoints for creating and managing consumptions"
+)
 @RestController
 @RequestMapping("/reservations/{reservationId}/consumptions")
 public class ConsumptionController {
@@ -45,13 +50,8 @@ public class ConsumptionController {
     @GetMapping
     public ResponseEntity<PageResponseDTO<ConsumptionResponseDTO>> getConsumptions(
             @PathVariable Long reservationId,
-            @PageableDefault(
-                    size = 10,
-                    sort = "id",
-                    direction = Sort.Direction.DESC
-            ) Pageable pageable
+            Pageable pageable
     ) {
-
         return ResponseEntity.ok(
                 consumptionService.getConsumptionsByReservation(
                         reservationId,
