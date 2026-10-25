@@ -92,8 +92,8 @@ public class    SecurityConfig {
                                 "/room/*/update-status",
                                 "/reservation/expired",
                                 "/reservation/*/cancel",
-                                "/reservation/*/checkin",
-                                "/reservation/*/checkout"
+                                "/reservation/*/check-in",
+                                "/reservation/*/check-out"
                         ).hasRole("RECEPTION")
 
                         .requestMatchers(

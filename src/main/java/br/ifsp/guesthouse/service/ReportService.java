@@ -7,6 +7,7 @@ import br.ifsp.guesthouse.dto.RevenueReportResponseDTO;
 import br.ifsp.guesthouse.model.Reservation;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
+import br.ifsp.guesthouse.repository.ConsumptionRepository;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
@@ -32,13 +33,15 @@ public class ReportService {
     private final ReservationRepository reservationRepository;
     private final RoomRepository roomRepository;
     private final RoomTypeRepository roomTypeRepository;
+    private final ConsumptionRepository consumptionRepository;
 
     public ReportService(ReservationRepository reservationRepository,
                          RoomRepository roomRepository,
-                         RoomTypeRepository roomTypeRepository) {
+                         RoomTypeRepository roomTypeRepository, ConsumptionRepository consumptionRepository) {
         this.reservationRepository = reservationRepository;
         this.roomRepository = roomRepository;
         this.roomTypeRepository = roomTypeRepository;
+        this.consumptionRepository = consumptionRepository;
     }
 
     public OccupancyReportResponseDTO getOccupancyRate(LocalDate startDate, LocalDate endDate) {
@@ -96,6 +99,13 @@ public class ReportService {
             for (Reservation reservation : reservations) {
                 if (reservation.getTotalPrice() != null) {
                     totalDailyRates = totalDailyRates.add(reservation.getTotalPrice());
+                }
+
+                BigDecimal consumptions =
+                        consumptionRepository.sumConsumptionsByReservationId(reservation.getId());
+
+                if (consumptions != null) { // SUM retorna null quando não há consumos
+                    totalConsumptions = totalConsumptions.add(consumptions);
                 }
             }
 
