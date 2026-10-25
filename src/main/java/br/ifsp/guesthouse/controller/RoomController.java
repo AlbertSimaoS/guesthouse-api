@@ -1,6 +1,7 @@
 package br.ifsp.guesthouse.controller;
 
 import br.ifsp.guesthouse.dto.*;
+import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.service.AvailabilityService;
 import br.ifsp.guesthouse.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,5 +36,15 @@ public class RoomController {
         return  ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @PatchMapping("/{id}/update-status")
+    public ResponseEntity<String> updateRoomStatus(
+            @PathVariable int id,
+            @RequestBody @Valid RoomStatusUpdateRequestDTO request
+    ) {
+        roomService.updateRoomStatus(id, request.status());
+
+        return ResponseEntity.ok("Status updated successfully.");
     }
 }

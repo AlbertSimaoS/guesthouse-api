@@ -1,6 +1,7 @@
 package br.ifsp.guesthouse.controller;
 
 import br.ifsp.guesthouse.dto.ExpiredReservationsResponseDTO;
+import br.ifsp.guesthouse.dto.PageResponseDTO;
 import br.ifsp.guesthouse.dto.ReservationRequestDTO;
 import br.ifsp.guesthouse.dto.ReservationResponseDTO;
 import br.ifsp.guesthouse.service.ReservationService;
@@ -9,6 +10,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -71,5 +75,18 @@ public class ReservationController {
                 reservationService.cancelReservation(id);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/my-reservations")
+    public ResponseEntity<PageResponseDTO<ReservationResponseDTO>> getMyReservations(
+            @PageableDefault(
+                    size = 10,
+                    sort = "id",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                reservationService.getMyReservations(pageable)
+        );
     }
 }

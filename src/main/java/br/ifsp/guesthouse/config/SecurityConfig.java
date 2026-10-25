@@ -63,6 +63,11 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers(
+                                HttpMethod.GET,
+                                "/reservation/my-reservations"
+                        ).hasRole("GUEST")
+
+                        .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"
@@ -82,7 +87,8 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.PATCH,
-                                "/payments/*"
+                                "/payments/*",
+                                "/room/*/update-status"
                         ).hasRole("RECEPTION")
 
                         .requestMatchers("/error").permitAll()
