@@ -21,4 +21,9 @@ public interface PaymentRepository
             PaymentType type
     );
 
+    boolean existsByReservationIdAndType(
+            Long reservationId,
+            PaymentType type
+    );
+
 }

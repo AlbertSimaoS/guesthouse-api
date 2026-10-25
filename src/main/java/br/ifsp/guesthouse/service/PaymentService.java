@@ -12,6 +12,7 @@ import br.ifsp.guesthouse.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -118,5 +119,83 @@ public class PaymentService {
         }
 
         paymentRepository.save(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public Payment getConfirmedDeposit(Long reservationId) {
+
+        Payment deposit = paymentRepository
+                .findByReservationIdAndType(
+                        reservationId,
+                        PaymentType.DEPOSIT
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Deposit payment not found."
+                        ));
+
+        if (deposit.getStatus() != PaymentStatus.CONFIRMED) {
+            throw new IllegalStateException(
+                    "Deposit payment is not confirmed."
+            );
+        }
+
+        return deposit;
+    }
+
+    @Transactional
+    public void retainDepositPayment(Long reservationId) {
+
+        Payment payment = paymentRepository
+                .findByReservationIdAndType(
+                        reservationId,
+                        PaymentType.DEPOSIT
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Deposit payment not found."
+                        ));
+
+        if (payment.getStatus() != PaymentStatus.CONFIRMED) {
+            throw new IllegalStateException(
+                    "Only confirmed deposits can be retained."
+            );
+        }
+
+        payment.setStatus(PaymentStatus.RETAINED);
+
+        paymentRepository.save(payment);
+    }
+
+    @Transactional
+    public Payment createCheckoutPayment(
+            Reservation reservation,
+            BigDecimal amount
+    ) {
+
+        if (amount == null ||
+                amount.compareTo(BigDecimal.ZERO) <= 0) {
+
+            throw new IllegalArgumentException(
+                    "Checkout payment amount must be positive."
+            );
+        }
+
+        Payment payment = new Payment();
+
+        payment.setReservation(reservation);
+        payment.setType(PaymentType.CHECKOUT);
+        payment.setAmount(amount);
+        payment.setStatus(PaymentStatus.PENDING);
+
+        return paymentRepository.save(payment);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean checkoutPaymentExists(Long reservationId) {
+        return paymentRepository.existsByReservationIdAndType(
+                reservationId,
+                PaymentType.CHECKOUT
+        );
     }
 }

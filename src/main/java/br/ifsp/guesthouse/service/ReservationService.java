@@ -6,11 +6,12 @@ import br.ifsp.guesthouse.model.Reservation;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
-import br.ifsp.guesthouse.repository.ReservationRepository;
-import br.ifsp.guesthouse.repository.RoomTypeRepository;
-import br.ifsp.guesthouse.repository.UserAccountRepository;
+import br.ifsp.guesthouse.repository.*;
 import br.ifsp.guesthouse.model.enums.PaymentStatus;
 import br.ifsp.guesthouse.model.enums.PaymentType;
+import br.ifsp.guesthouse.model.Room;
+import br.ifsp.guesthouse.model.enums.RoomStatus;
+import br.ifsp.guesthouse.model.Payment;
 
 import jakarta.validation.Valid;
 
@@ -36,19 +37,25 @@ public class ReservationService {
     private final UserAccountRepository userAccountRepository;
     private final AvailabilityService availabilityService;
     private final PaymentService paymentService;
+    private final RoomRepository roomRepository;
+    private final ConsumptionRepository consumptionRepository;
 
     public ReservationService(
             ReservationRepository reservationRepository,
             RoomTypeRepository roomTypeRepository,
             UserAccountRepository userAccountRepository,
             AvailabilityService availabilityService,
-            PaymentService paymentService
+            PaymentService paymentService,
+            RoomRepository roomRepository,
+            ConsumptionRepository consumptionRepository
     ) {
         this.reservationRepository = reservationRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.userAccountRepository = userAccountRepository;
-        this.availabilityService = availabilityService;
         this.paymentService = paymentService;
+        this.roomRepository = roomRepository;
+        this.consumptionRepository = consumptionRepository;
+        this.availabilityService = availabilityService;
     }
 
     @Transactional
@@ -146,24 +153,61 @@ public class ReservationService {
     }
 
     @Transactional
-    public PaymentResponseDTO updatePaymentStatus(
+    public PaymentResponseDTO updateReservationStatus(
             Long paymentId,
             PaymentStatus newStatus) {
 
         PaymentResponseDTO payment =
                 paymentService.updatePaymentStatus(paymentId, newStatus);
 
+        Reservation reservation = reservationRepository
+                .findById(payment.reservationId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Reservation not found."
+                        ));
+
         if (payment.status() == PaymentStatus.CONFIRMED
                 && payment.type() == PaymentType.DEPOSIT) {
 
-            Reservation reservation = reservationRepository
-                    .findById(payment.reservationId())
-                    .orElseThrow(() ->
-                            new ResourceNotFoundException(
-                                    "Reservation not found."
-                            ));
+            if (reservation.getStatus() != ReservationStatus.PENDING) {
+                throw new IllegalStateException(
+                        "Only pending reservations can be confirmed."
+                );
+            }
 
             reservation.setStatus(ReservationStatus.CONFIRMED);
+            reservationRepository.save(reservation);
+        }
+
+        if (payment.status() == PaymentStatus.CONFIRMED
+                && payment.type() == PaymentType.CHECKOUT) {
+
+            if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+                throw new IllegalStateException(
+                        "Only checked-in reservations can be finished."
+                );
+            }
+
+            Room room = reservation.getRoom();
+
+            if (room == null) {
+                throw new IllegalStateException(
+                        "Reservation has no assigned room."
+                );
+            }
+
+            if (room.getStatus() != RoomStatus.OCCUPIED) {
+                throw new IllegalStateException(
+                        "Assigned room is not occupied."
+                );
+            }
+
+            reservation.setStatus(ReservationStatus.FINISHED);
+
+            room.setStatus(RoomStatus.CLEANING);
+
+            roomRepository.save(room);
             reservationRepository.save(reservation);
         }
 
@@ -228,18 +272,7 @@ public class ReservationService {
 
         Reservation saved = reservationRepository.save(reservation);
 
-        return new ReservationResponseDTO(
-                saved.getId(),
-                saved.getRoomType().getId(),
-                saved.getRoom() != null ? saved.getRoom().getId() : null,
-                saved.getGuest().getId(),
-                saved.getStartDate(),
-                saved.getEndDate(),
-                saved.getNumberOfGuests(),
-                saved.getTotalPrice(),
-                saved.getDepositAmount(),
-                saved.getStatus()
-        );
+        return ReservationResponseDTO.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -274,5 +307,183 @@ public class ReservationService {
                         .map(ReservationResponseDTO::from);
 
         return PageResponseDTO.from(reservations);
+    }
+
+    @Transactional
+    public ReservationResponseDTO checkIn(
+            Long reservationId,
+            Integer roomId
+    ) {
+        Reservation reservation = reservationRepository
+                .findById(reservationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Reservation not found."
+                        ));
+
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new IllegalStateException(
+                    "Only confirmed reservations can check in."
+            );
+        }
+
+        if (!LocalDate.now().equals(reservation.getStartDate())) {
+            throw new IllegalStateException(
+                    "Check-in is only allowed on the start date."
+            );
+        }
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room not found."
+                        ));
+
+        if (room.getType().getId() != reservation.getRoomType().getId()) {
+            throw new IllegalArgumentException(
+                    "Room does not match the reserved room type."
+            );
+        }
+
+        if (room.getStatus() != RoomStatus.AVAILABLE) {
+            throw new IllegalStateException(
+                    "Room is not available."
+            );
+        }
+
+        reservation.setRoom(room);
+        reservation.setStatus(ReservationStatus.CHECKED_IN);
+
+        room.setStatus(RoomStatus.OCCUPIED);
+        roomRepository.save(room);
+
+        Reservation saved = reservationRepository.save(reservation);
+
+        return ReservationResponseDTO.from(saved);
+    }
+
+    @Transactional
+    public int processNoShows() {
+
+        LocalDate today = LocalDate.now();
+
+        List<Reservation> reservations =
+                reservationRepository.findByStatusAndStartDateBefore(
+                        ReservationStatus.CONFIRMED,
+                        today
+                );
+
+        for (Reservation reservation : reservations) {
+
+            paymentService.retainDepositPayment(reservation.getId());
+
+            reservation.setStatus(ReservationStatus.NO_SHOW);
+
+            reservationRepository.save(reservation);
+        }
+
+        return reservations.size();
+    }
+
+    @Transactional
+    public CheckoutResponseDTO checkOut(Long reservationId) {
+
+        Reservation reservation = reservationRepository
+                .findById(reservationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Reservation not found."
+                        ));
+
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+            throw new IllegalStateException(
+                    "Only checked-in reservations can check out."
+            );
+        }
+
+        if (reservation.getRoom() == null) {
+            throw new IllegalStateException(
+                    "Reservation has no assigned room."
+            );
+        }
+
+        LocalDate checkoutDate = LocalDate.now();
+
+        boolean earlyCheckout =
+                checkoutDate.isBefore(reservation.getEndDate());
+
+        BigDecimal stayPrice;
+        BigDecimal penalty = BigDecimal.ZERO;
+
+        if (earlyCheckout) {
+
+            LocalDate usedStayEnd = checkoutDate;
+
+            if (!usedStayEnd.isAfter(reservation.getStartDate())) {
+                usedStayEnd = reservation.getStartDate().plusDays(1);
+            }
+
+            stayPrice = availabilityService.calculateStayPrice(
+                    reservation.getRoomType(),
+                    reservation.getStartDate(),
+                    usedStayEnd
+            );
+
+            LocalDate penaltyDate = checkoutDate.plusDays(1);
+
+            penalty = availabilityService.calculateStayPrice(
+                    reservation.getRoomType(),
+                    penaltyDate,
+                    penaltyDate.plusDays(1)
+            );
+
+        } else {
+
+            stayPrice = reservation.getTotalPrice();
+        }
+
+        BigDecimal consumptionTotal =
+                consumptionRepository.sumConsumptionsByReservationId(
+                        reservationId
+                );
+
+        Payment deposit =
+                    paymentService.getConfirmedDeposit(reservationId);
+
+        BigDecimal depositAmount = deposit.getAmount();
+
+        BigDecimal totalDue = stayPrice
+                .add(consumptionTotal)
+                .add(penalty);
+
+        BigDecimal checkoutAmount =
+                totalDue.subtract(depositAmount);
+
+        if (checkoutAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException(
+                    "Checkout balance must be positive. " +
+                            "Zero-balance or refund checkout requires separate handling."
+            );
+        }
+
+        Payment checkoutPayment =
+                paymentService.createCheckoutPayment(
+                        reservation,
+                        checkoutAmount
+                );
+
+        return new CheckoutResponseDTO(
+                reservation.getId(),
+                checkoutPayment.getId(),
+                checkoutDate,
+                earlyCheckout,
+                stayPrice,
+                consumptionTotal,
+                penalty,
+                depositAmount,
+                totalDue,
+                checkoutAmount,
+                checkoutPayment.getStatus()
+        );
     }
 }

@@ -14,7 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-public class SecurityConfig {
+public class    SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(
@@ -77,7 +77,8 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/room-types/register",
                                 "/room/register",
-                                "/season/register"
+                                "/season/register",
+                                "/reservations/*/consumptions"
                         ).hasRole("RECEPTION")
 
                         .requestMatchers(
@@ -90,7 +91,9 @@ public class SecurityConfig {
                                 "/payments/*",
                                 "/room/*/update-status",
                                 "/reservation/expired",
-                                "/reservation/*/cancel"
+                                "/reservation/*/cancel",
+                                "/reservation/*/checkin",
+                                "/reservation/*/checkout"
                         ).hasRole("RECEPTION")
 
                         .requestMatchers(

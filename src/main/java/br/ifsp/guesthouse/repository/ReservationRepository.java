@@ -34,6 +34,25 @@ public interface ReservationRepository
             @Param("statuses") List<ReservationStatus> statuses
     );
 
+    @Query("""
+    SELECT COUNT(r) FROM Reservation r
+    WHERE r.room.id = :roomId
+      AND r.status = :status
+      AND r.startDate < :endDate
+      AND r.endDate > :startDate
+""")
+    long countRoomReservations(
+            @Param("roomId") Integer roomId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("status") ReservationStatus status
+    );
+
+    List<Reservation> findByStatusAndStartDateBefore(
+            ReservationStatus status,
+            LocalDate date
+    );
+
     Page<Reservation> findByGuestId(Long guestId, Pageable pageable);
 
     @Query("""

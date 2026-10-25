@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
         description = "Endpoints for managing payments"
 )
 @RestController
-@RequestMapping("/payment")
+@RequestMapping("/payments")
 public class PaymentController {
 
     private final ReservationService reservationService;
@@ -35,7 +35,7 @@ public class PaymentController {
             @Valid @RequestBody PaymentUpdateRequestDTO request) {
 
         PaymentResponseDTO response =
-                reservationService.updatePaymentStatus(
+                reservationService.updateReservationStatus(
                         id,
                         request.status()
                 );
