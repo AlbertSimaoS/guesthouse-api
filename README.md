@@ -114,11 +114,9 @@ Antes de começar, instale:
 ### 2. Clonar o repositório
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
+git clone https://github.com/AlbertSimaoS/guesthouse-api.git
 cd guesthouse-api
 ```
-
-Substitua `<URL_DO_REPOSITORIO>` pela URL do repositório Git.
 
 Se você já possui o projeto localmente, navegue até a pasta raiz, onde estão o `Dockerfile`, o `docker-compose.yml` e o `pom.xml`.
 
