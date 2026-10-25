@@ -10,6 +10,9 @@ import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.repository.ConsumptionRepository;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.service.PaymentService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -79,9 +82,39 @@ public class ConsumptionService {
             Pageable pageable
     ) {
 
-        if (!reservationRepository.existsById(reservationId)) {
-            throw new ResourceNotFoundException(
-                    "Reservation not found."
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || "anonymousUser".equals(authentication.getName())) {
+
+            throw new IllegalArgumentException(
+                    "An authenticated user is required."
+            );
+        }
+
+        Long userId;
+
+        try {
+            userId = Long.valueOf(authentication.getName());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Invalid authenticated user ID."
+            );
+        }
+
+        Reservation reservation = reservationRepository
+                .findById(reservationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Reservation not found."
+                        ));
+
+        if (!reservation.getGuest().getId().equals(userId)) {
+            throw new AccessDeniedException(
+                    "You cannot access another guest's consumptions."
             );
         }
 

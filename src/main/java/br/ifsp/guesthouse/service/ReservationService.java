@@ -216,7 +216,7 @@ public class ReservationService {
 
     @Transactional
     public int expirePendingReservations() {
-        LocalDateTime limit = LocalDateTime.now().minusHours(0); //alterar para 24
+        LocalDateTime limit = LocalDateTime.now().minusHours(24);
 
         List<Reservation> reservations =
                 reservationRepository.findByStatusAndCreatedAtBefore(
@@ -458,13 +458,6 @@ public class ReservationService {
 
         BigDecimal checkoutAmount =
                 totalDue.subtract(depositAmount);
-
-        if (checkoutAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalStateException(
-                    "Checkout balance must be positive. " +
-                            "Zero-balance or refund checkout requires separate handling."
-            );
-        }
 
         Payment checkoutPayment =
                 paymentService.createCheckoutPayment(
