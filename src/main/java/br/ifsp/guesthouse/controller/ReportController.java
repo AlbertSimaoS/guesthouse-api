@@ -44,9 +44,9 @@ public class ReportController {
 
     @GetMapping("/daily-movements")
     public ResponseEntity<DailyMovementReportResponseDTO> getDailyMovementsReport(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
-        // Se a data não for informada, assume o dia de hoje
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
         DailyMovementReportResponseDTO report = reportService.getDailyMovements(targetDate);
         return ResponseEntity.ok(report);

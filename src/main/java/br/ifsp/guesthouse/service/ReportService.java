@@ -10,6 +10,7 @@ import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -112,7 +113,9 @@ public class ReportService {
         return reportList;
     }
 
+    @Transactional(readOnly = true)
     public DailyMovementReportResponseDTO getDailyMovements(LocalDate date) {
+
         List<ReservationMovementDTO> checkIns = reservationRepository.findByStartDate(date).stream()
                 .filter(r -> VALID_STATUSES.contains(r.getStatus()))
                 .map(ReservationMovementDTO::new)
