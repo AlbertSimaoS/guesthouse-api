@@ -22,6 +22,7 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<jacoco.version>0.8.13</jacoco.version>
 	</properties>
 
 	<dependencies>
@@ -124,6 +125,60 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<configuration>
+					<excludes>
+						<!-- Classes sem lógica de negócio: fora da métrica de cobertura -->
+						<exclude>br/ifsp/guesthouse/GuesthouseApiApplication.class</exclude>
+						<exclude>br/ifsp/guesthouse/dto/**</exclude>
+						<exclude>br/ifsp/guesthouse/model/**</exclude>
+						<exclude>br/ifsp/guesthouse/config/OpenApiConfig.class</exclude>
+					</excludes>
+				</configuration>
+				<executions>
+					<!-- Instrumenta a JVM dos testes -->
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<!-- Gera o relatório HTML/XML/CSV em target/site/jacoco ao rodar os testes -->
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<!-- Falha o build se a cobertura ficar abaixo do mínimo (mvn verify) -->
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.00</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 
 		</plugins>

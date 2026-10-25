@@ -1,0 +1,67 @@
+services:
+
+  # ------------------------------------------------------------------
+  # Banco de dados MySQL
+  # ------------------------------------------------------------------
+  db:
+    image: mysql:8.4
+    container_name: guesthouse-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-guesthouse}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      TZ: America/Sao_Paulo
+    ports:
+      - "3307:3306"          # 3307 no host para não conflitar com um MySQL local
+    volumes:
+      - guesthouse-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # ------------------------------------------------------------------
+  # API (Spring Boot)
+  # ------------------------------------------------------------------
+  api:
+    build: .
+    container_name: guesthouse-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${DB_NAME:-guesthouse}?createDatabaseIfNotExist=true&serverTimezone=America/Sao_Paulo
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-root}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      # Seed (src/main/resources/seed.sql) carregado na subida
+      SPRING_SQL_INIT_MODE: always
+      SPRING_SQL_INIT_DATA_LOCATIONS: classpath:seed.sql
+      SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
+      JWT_SECRET: ${JWT_SECRET:-VGhpc0lzQVNlY3JldEtleUZvckpXVFRlc3RzMTIzNDU2Nzg=}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+      TZ: America/Sao_Paulo
+
+  # ------------------------------------------------------------------
+  # Testes + cobertura JaCoCo (perfil "tests", não sobe junto com a API)
+  #   docker compose --profile tests run --rm tests
+  # Relatório gerado em: ./target/site/jacoco/index.html
+  # Os testes usam H2 em memória (src/test/resources), sem depender do MySQL.
+  # ------------------------------------------------------------------
+  tests:
+    profiles: ["tests"]
+    image: maven:3.9-eclipse-temurin-21
+    working_dir: /app
+    volumes:
+      - .:/app
+      - maven-cache:/root/.m2
+    command: mvn -B verify
+
+volumes:
+  guesthouse-data:
+  maven-cache:
