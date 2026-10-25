@@ -4,7 +4,6 @@ import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -159,9 +158,6 @@ class ReportFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF16: lista as entradas e saídas previstas do dia")
-    @Disabled("BUG: ReportService.getDailyMovements não é @Transactional e ReservationMovementDTO acessa "
-            + "reservation.getRoomType()/getGuest() (LAZY) fora da sessão -> LazyInitializationException (500). "
-            + "Com open-in-view=false isso quebra sempre que há reservas no dia.")
     void dailyMovements() throws Exception {
         UserAccount guest = createGuest("hospede@email.com");
         RoomType standard = createRoomType("Standard", 2, "100.00");

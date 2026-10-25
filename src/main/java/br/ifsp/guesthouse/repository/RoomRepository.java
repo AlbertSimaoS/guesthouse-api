@@ -18,5 +18,6 @@ import java.util.List;
 public interface RoomRepository extends JpaRepository<Room, Integer> {
     boolean existsByNumberIgnoreCase(String number);
     Integer countByType(RoomType type);
+    Integer countByTypeAndStatusNot(RoomType type, RoomStatus status);
     List<Room> findByStatusAndStatusUpdatedAtBefore(RoomStatus status, LocalDateTime dateTime);
 }

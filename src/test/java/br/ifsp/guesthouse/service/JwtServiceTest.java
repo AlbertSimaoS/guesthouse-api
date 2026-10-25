@@ -88,4 +88,34 @@ class JwtServiceTest {
         assertThatThrownBy(() -> new JwtService(SECRET, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new JwtService(SECRET, -5)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("o token identifica usuário e perfil (claim 'role')")
+    void tokenCarriesProfile() {
+        String token = service.generateToken(5L, br.ifsp.guesthouse.model.enums.Profile.RECEPTION);
+
+        Claims claims = Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertThat(claims.getSubject()).isEqualTo("5");
+        assertThat(claims.get("role", String.class)).isEqualTo("RECEPTION");
+        assertThat(service.extractUserId(token)).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("token gerado sem perfil não traz a claim 'role'")
+    void tokenWithoutProfileHasNoRole() {
+        String token = service.generateToken(5L);
+
+        Claims claims = Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertThat(claims.get("role")).isNull();
+    }
 }

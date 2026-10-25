@@ -35,6 +35,20 @@ public interface ReservationRepository
     );
 
     @Query("""
+            SELECT res FROM Reservation res
+            WHERE res.roomType.id = :roomTypeId
+              AND res.status IN :statuses
+              AND res.startDate < :endDate
+              AND res.endDate > :startDate
+            """)
+    List<Reservation> findBlockingReservations(
+            @Param("roomTypeId") Integer roomTypeId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") List<ReservationStatus> statuses
+    );
+
+    @Query("""
     SELECT COUNT(r) FROM Reservation r
     WHERE r.room.id = :roomId
       AND r.status = :status

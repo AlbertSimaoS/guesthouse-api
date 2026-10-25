@@ -3,9 +3,11 @@ package br.ifsp.guesthouse.service;
 import br.ifsp.guesthouse.dto.PageResponseDTO;
 import br.ifsp.guesthouse.dto.AvailabilityRequestDTO;
 import br.ifsp.guesthouse.dto.AvailabilityResponseDTO;
+import br.ifsp.guesthouse.model.Reservation;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.Season;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
+import br.ifsp.guesthouse.model.enums.RoomStatus;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
@@ -23,6 +25,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class AvailabilityService {
@@ -33,14 +36,14 @@ public class AvailabilityService {
 	private final ReservationRepository reservationRepository;
 
 	public AvailabilityService(
-            RoomRepository roomRepository,
-            SeasonRepository seasonRepository, RoomTypeRepository roomTypeRepository, ReservationRepository reservationRepository
-    ) {
+			RoomRepository roomRepository,
+			SeasonRepository seasonRepository, RoomTypeRepository roomTypeRepository, ReservationRepository reservationRepository
+	) {
 		this.roomRepository = roomRepository;
 		this.seasonRepository = seasonRepository;
-        this.roomTypeRepository = roomTypeRepository;
-        this.reservationRepository = reservationRepository;
-    }
+		this.roomTypeRepository = roomTypeRepository;
+		this.reservationRepository = reservationRepository;
+	}
 
 
 	@Transactional(readOnly = true)
@@ -62,36 +65,53 @@ public class AvailabilityService {
 
 
 	List<AvailabilityResponseDTO> buildAvailableRoomTypeList(
-            LocalDate startDate,
-            LocalDate endDate,
-            Integer numberOfguests
-    ) {
+			LocalDate startDate,
+			LocalDate endDate,
+			Integer numberOfguests
+	) {
 		List<ReservationStatus> blockingStatuses = List.of(
 				ReservationStatus.CONFIRMED,
 				ReservationStatus.CHECKED_IN,
 				ReservationStatus.PENDING
 		);
 
-		List<RoomType> availableRoomTypes =
-				roomTypeRepository.findAvailableRoomTypes(
-						startDate,
-						endDate,
-						numberOfguests,
-						blockingStatuses
-				);
-
-		return availableRoomTypes.stream()
+		return roomTypeRepository.findByCapacityGreaterThanEqual(numberOfguests)
+				.stream()
 				.map(type -> {
-					Integer totalPhysicalRooms = roomRepository.countByType(type);
-
-					long reservedRooms = reservationRepository.countBlockingReservations(
-							type.getId(),
-							startDate,
-							endDate,
-							blockingStatuses
+					// quartos em manutenção não contam na disponibilidade
+					int usableRooms = roomRepository.countByTypeAndStatusNot(
+							type,
+							RoomStatus.MAINTENANCE
 					);
 
-					int availableRooms = (int) (totalPhysicalRooms - reservedRooms);
+					List<Reservation> overlapping =
+							reservationRepository.findBlockingReservations(
+									type.getId(),
+									startDate,
+									endDate,
+									blockingStatuses
+							);
+
+					// a disponibilidade é avaliada noite a noite: vale o pior caso
+					int peakOccupancy = 0;
+					for (LocalDate night = startDate;
+						 night.isBefore(endDate);
+						 night = night.plusDays(1)) {
+
+						final LocalDate currentNight = night;
+						int occupied = (int) overlapping.stream()
+								.filter(r -> !r.getStartDate().isAfter(currentNight)
+										&& r.getEndDate().isAfter(currentNight))
+								.count();
+
+						peakOccupancy = Math.max(peakOccupancy, occupied);
+					}
+
+					int availableRooms = usableRooms - peakOccupancy;
+
+					if (availableRooms <= 0) {
+						return null;
+					}
 
 					BigDecimal totalStayPrice = calculateStayPrice(
 							type,
@@ -101,6 +121,7 @@ public class AvailabilityService {
 
 					return AvailabilityResponseDTO.from(type, availableRooms, totalStayPrice);
 				})
+				.filter(Objects::nonNull)
 				.sorted(Comparator.comparing(
 						AvailabilityResponseDTO::roomTypeName
 				))
@@ -175,9 +196,10 @@ public class AvailabilityService {
 
 		long nights = ChronoUnit.DAYS.between(checkIn, checkOut);
 
+		// a saída não é uma noite
 		boolean includesHighSeason = seasonRepository
-				.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
-						checkOut,
+				.findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(
+						checkOut.minusDays(1),
 						checkIn
 				)
 				.stream()

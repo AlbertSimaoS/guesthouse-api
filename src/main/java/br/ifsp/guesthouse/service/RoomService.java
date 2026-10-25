@@ -73,6 +73,15 @@ public class RoomService {
             );
         }
 
+        // OCCUPIED é definido pelo fluxo de check-in/check-out;
+        // manualmente só se libera, ocupa o quarto ou se coloca em manutenção.
+        if (newStatus == RoomStatus.OCCUPIED) {
+            throw new IllegalStateException(
+                    "The status " + newStatus
+                            + " cannot be set manually."
+            );
+        }
+
         room.setStatus(newStatus);
         roomRepository.save(room);
     }

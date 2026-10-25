@@ -4,7 +4,11 @@ import br.ifsp.guesthouse.TestData;
 import br.ifsp.guesthouse.dto.AvailabilityRequestDTO;
 import br.ifsp.guesthouse.dto.AvailabilityResponseDTO;
 import br.ifsp.guesthouse.dto.PageResponseDTO;
+import br.ifsp.guesthouse.model.Reservation;
 import br.ifsp.guesthouse.model.RoomType;
+import br.ifsp.guesthouse.model.enums.Profile;
+import br.ifsp.guesthouse.model.enums.ReservationStatus;
+import br.ifsp.guesthouse.model.enums.RoomStatus;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
@@ -29,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -110,8 +115,8 @@ class AvailabilityServiceTest {
     @Test
     @DisplayName("alta temporada: 1 noite é recusada, 2 noites são aceitas")
     void highSeasonMinimumStay() {
-        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(any(), any()))
-                .thenReturn(Optional.of(TestData.season("Alta Temporada", d0, d0.plusDays(10), "1.5")));
+        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(any(), any()))
+                .thenReturn(List.of(TestData.season("Alta Temporada", d0, d0.plusDays(10), "1.5")));
 
         assertThatThrownBy(() -> service.validateHighSeasonMinimumStay(d0, d0.plusDays(1)))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -121,8 +126,8 @@ class AvailabilityServiceTest {
     @Test
     @DisplayName("o nome da temporada é comparado sem diferenciar maiúsculas")
     void highSeasonNameIsCaseInsensitive() {
-        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(any(), any()))
-                .thenReturn(Optional.of(TestData.season("ALTA TEMPORADA", d0, d0.plusDays(10), "1.5")));
+        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(any(), any()))
+                .thenReturn(List.of(TestData.season("ALTA TEMPORADA", d0, d0.plusDays(10), "1.5")));
 
         assertThatThrownBy(() -> service.validateHighSeasonMinimumStay(d0, d0.plusDays(1)))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -131,28 +136,55 @@ class AvailabilityServiceTest {
     @Test
     @DisplayName("outras temporadas e ausência de temporada não exigem estadia mínima")
     void otherSeasonsHaveNoMinimumStay() {
-        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(any(), any()))
-                .thenReturn(Optional.of(TestData.season("Feriado", d0, d0.plusDays(10), "1.2")));
+        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(any(), any()))
+                .thenReturn(List.of(TestData.season("Feriado", d0, d0.plusDays(10), "1.2")));
         assertThatCode(() -> service.validateHighSeasonMinimumStay(d0, d0.plusDays(1))).doesNotThrowAnyException();
 
-        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(any(), any()))
-                .thenReturn(Optional.empty());
+        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(any(), any()))
+                .thenReturn(List.of());
         assertThatCode(() -> service.validateHighSeasonMinimumStay(d0, d0.plusDays(1))).doesNotThrowAnyException();
     }
 
+    @Test
+    @DisplayName("alta temporada em qualquer ponto da estadia (várias temporadas) exige 2 noites")
+    void highSeasonAmongSeveralSeasons() {
+        when(seasonRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(any(), any()))
+                .thenReturn(List.of(
+                        TestData.season("Feriado", d0, d0, "1.2"),
+                        TestData.season("Alta Temporada", d0.plusDays(1), d0.plusDays(5), "1.5")));
+
+        assertThatThrownBy(() -> service.validateHighSeasonMinimumStay(d0, d0.plusDays(1)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatCode(() -> service.validateHighSeasonMinimumStay(d0, d0.plusDays(3))).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("a consulta de temporadas usa as noites da estadia: de check-in até a véspera do check-out")
+    void highSeasonLookupUsesStayNights() {
+        service.validateHighSeasonMinimumStay(d0, d0.plusDays(3));
+
+        verify(seasonRepository)
+                .findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(d0.plusDays(2), d0);
+    }
+
     // ------------------------------------------------------ disponibilidade
+
+    private Reservation booking(long id, RoomType type, int fromDay, int toDay) {
+        return TestData.reservation(id, TestData.user(1L, "a@a.com", Profile.GUEST), type,
+                d0.plusDays(fromDay), d0.plusDays(toDay), "100.00", ReservationStatus.CONFIRMED);
+    }
 
     @Test
     @DisplayName("lista os tipos disponíveis com quartos livres e valor da estadia, ordenados por nome")
     void listsAvailableTypes() {
         RoomType suite = TestData.roomType(2, "Suite", 3, "300.00");
         RoomType standard = TestData.roomType(1, "Standard", 2, "100.00");
-        when(roomTypeRepository.findAvailableRoomTypes(any(), any(), any(), any()))
-                .thenReturn(List.of(suite, standard));
-        when(roomRepository.countByType(standard)).thenReturn(3);
-        when(roomRepository.countByType(suite)).thenReturn(1);
-        when(reservationRepository.countBlockingReservations(eq(1), any(), any(), any())).thenReturn(1L);
-        when(reservationRepository.countBlockingReservations(eq(2), any(), any(), any())).thenReturn(0L);
+        when(roomTypeRepository.findByCapacityGreaterThanEqual(2)).thenReturn(List.of(suite, standard));
+        when(roomRepository.countByTypeAndStatusNot(standard, RoomStatus.MAINTENANCE)).thenReturn(3);
+        when(roomRepository.countByTypeAndStatusNot(suite, RoomStatus.MAINTENANCE)).thenReturn(1);
+        when(reservationRepository.findBlockingReservations(eq(1), any(), any(), any()))
+                .thenReturn(List.of(booking(1, standard, 0, 2)));
+        when(reservationRepository.findBlockingReservations(eq(2), any(), any(), any())).thenReturn(List.of());
 
         List<AvailabilityResponseDTO> result =
                 service.availableRoomTypes(new AvailabilityRequestDTO(d0, d0.plusDays(2), 2));
@@ -162,6 +194,60 @@ class AvailabilityServiceTest {
         assertThat(result.get(0).totalStayPrice()).isEqualByComparingTo("200.00");
         assertThat(result.get(1).availableRooms()).isEqualTo(1);
         assertThat(result.get(1).totalStayPrice()).isEqualByComparingTo("600.00");
+    }
+
+    @Test
+    @DisplayName("tipo sem quartos livres em alguma noite não aparece na lista")
+    void soldOutTypeIsOmitted() {
+        RoomType standard = TestData.roomType(1, "Standard", 2, "100.00");
+        when(roomTypeRepository.findByCapacityGreaterThanEqual(2)).thenReturn(List.of(standard));
+        when(roomRepository.countByTypeAndStatusNot(standard, RoomStatus.MAINTENANCE)).thenReturn(1);
+        when(reservationRepository.findBlockingReservations(eq(1), any(), any(), any()))
+                .thenReturn(List.of(booking(1, standard, 0, 2)));
+
+        assertThat(service.availableRoomTypes(new AvailabilityRequestDTO(d0, d0.plusDays(2), 2))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("quartos em manutenção não entram na contagem de quartos disponíveis")
+    void maintenanceRoomsAreIgnored() {
+        RoomType standard = TestData.roomType(1, "Standard", 2, "100.00");
+        when(roomTypeRepository.findByCapacityGreaterThanEqual(2)).thenReturn(List.of(standard));
+        when(roomRepository.countByTypeAndStatusNot(standard, RoomStatus.MAINTENANCE)).thenReturn(1);
+        when(reservationRepository.findBlockingReservations(eq(1), any(), any(), any())).thenReturn(List.of());
+
+        List<AvailabilityResponseDTO> result =
+                service.availableRoomTypes(new AvailabilityRequestDTO(d0, d0.plusDays(1), 2));
+
+        assertThat(result).singleElement().satisfies(dto -> assertThat(dto.availableRooms()).isEqualTo(1));
+        verify(roomRepository).countByTypeAndStatusNot(standard, RoomStatus.MAINTENANCE);
+    }
+
+    @Test
+    @DisplayName("a disponibilidade é por noite: reservas em sequência não somam")
+    void availabilityIsPerNight() {
+        RoomType standard = TestData.roomType(1, "Standard", 2, "100.00");
+        when(roomTypeRepository.findByCapacityGreaterThanEqual(2)).thenReturn(List.of(standard));
+        when(roomRepository.countByTypeAndStatusNot(standard, RoomStatus.MAINTENANCE)).thenReturn(2);
+        when(reservationRepository.findBlockingReservations(eq(1), any(), any(), any()))
+                .thenReturn(List.of(booking(1, standard, 0, 2), booking(2, standard, 2, 4)));
+
+        List<AvailabilityResponseDTO> result =
+                service.availableRoomTypes(new AvailabilityRequestDTO(d0, d0.plusDays(4), 2));
+
+        assertThat(result).singleElement().satisfies(dto -> assertThat(dto.availableRooms()).isEqualTo(1));
+    }
+
+    @Test
+    @DisplayName("reservas simultâneas na mesma noite esgotam os quartos")
+    void overlappingBookingsExhaustRooms() {
+        RoomType standard = TestData.roomType(1, "Standard", 2, "100.00");
+        when(roomTypeRepository.findByCapacityGreaterThanEqual(2)).thenReturn(List.of(standard));
+        when(roomRepository.countByTypeAndStatusNot(standard, RoomStatus.MAINTENANCE)).thenReturn(2);
+        when(reservationRepository.findBlockingReservations(eq(1), any(), any(), any()))
+                .thenReturn(List.of(booking(1, standard, 0, 3), booking(2, standard, 1, 4)));
+
+        assertThat(service.availableRoomTypes(new AvailabilityRequestDTO(d0, d0.plusDays(4), 2))).isEmpty();
     }
 
     @Test

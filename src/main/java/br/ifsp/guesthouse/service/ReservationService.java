@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -216,7 +217,7 @@ public class ReservationService {
 
     @Transactional
     public int expirePendingReservations() {
-        LocalDateTime limit = LocalDateTime.now().minusHours(24);
+        LocalDateTime limit = LocalDateTime.now().minusHours(24); //alterar para 24
 
         List<Reservation> reservations =
                 reservationRepository.findByStatusAndCreatedAtBefore(
@@ -241,6 +242,8 @@ public class ReservationService {
                         new ResourceNotFoundException(
                                 "Reservation not found."
                         ));
+
+        assertGuestOwnsReservation(reservation);
 
         if (reservation.getStatus() != ReservationStatus.PENDING
                 && reservation.getStatus() != ReservationStatus.CONFIRMED) {
@@ -273,6 +276,33 @@ public class ReservationService {
         Reservation saved = reservationRepository.save(reservation);
 
         return ReservationResponseDTO.from(saved);
+    }
+
+    private void assertGuestOwnsReservation(Reservation reservation) {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            return;
+        }
+
+        boolean isReception = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_RECEPTION".equals(a.getAuthority()));
+
+        if (isReception) {
+            return;
+        }
+
+        boolean isOwner = authentication.getName() != null
+                && authentication.getName().equals(
+                String.valueOf(reservation.getGuest().getId())
+        );
+
+        if (!isOwner) {
+            throw new AccessDeniedException(
+                    "You can only cancel your own reservations."
+            );
+        }
     }
 
     @Transactional(readOnly = true)
@@ -447,8 +477,12 @@ public class ReservationService {
                         reservationId
                 );
 
+        if (consumptionTotal == null) {
+            consumptionTotal = BigDecimal.ZERO;
+        }
+
         Payment deposit =
-                    paymentService.getConfirmedDeposit(reservationId);
+                paymentService.getConfirmedDeposit(reservationId);
 
         BigDecimal depositAmount = deposit.getAmount();
 
@@ -458,6 +492,13 @@ public class ReservationService {
 
         BigDecimal checkoutAmount =
                 totalDue.subtract(depositAmount);
+
+        if (checkoutAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException(
+                    "Checkout balance must be positive. " +
+                            "Zero-balance or refund checkout requires separate handling."
+            );
+        }
 
         Payment checkoutPayment =
                 paymentService.createCheckoutPayment(

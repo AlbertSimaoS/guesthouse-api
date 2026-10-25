@@ -2,7 +2,6 @@ package br.ifsp.guesthouse.functional;
 
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.Profile;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -197,8 +196,6 @@ class AuthFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF02: o token identifica o perfil do usuário")
-    @Disabled("BUG: JwtService.generateToken(Long) só grava o subject (id). O enunciado pede um token "
-            + "que identifique usuário E perfil - falta uma claim de perfil (ex.: role).")
     void tokenCarriesProfile() throws Exception {
         String token = receptionToken();
 

@@ -64,8 +64,7 @@ public class    SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/reservation/my-reservations",
-                                "/reservations/*/consumptions"
+                                "/reservation/my-reservations"
                         ).hasRole("GUEST")
 
                         .requestMatchers(
@@ -89,10 +88,14 @@ public class    SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.PATCH,
+                                "/reservation/*/cancel"
+                        ).hasAnyRole("GUEST", "RECEPTION")
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
                                 "/payments/*",
                                 "/room/*/update-status",
                                 "/reservation/expired",
-                                "/reservation/*/cancel",
                                 "/reservation/*/check-in",
                                 "/reservation/*/check-out"
                         ).hasRole("RECEPTION")

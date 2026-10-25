@@ -10,7 +10,7 @@ public interface UserAccountRepository
         extends JpaRepository<UserAccount, Long> {
     Optional<UserAccount> findByEmail(String email);
 
-    Optional<UserAccount> findByCpfAndEmail(String email, String cpf);
+    Optional<UserAccount> findByCpfAndEmail(String cpf, String email);
 
     boolean existsByEmail(String email);
 

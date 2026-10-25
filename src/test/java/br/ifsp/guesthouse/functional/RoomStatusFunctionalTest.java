@@ -3,7 +3,6 @@ package br.ifsp.guesthouse.functional;
 import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -93,7 +92,6 @@ class RoomStatusFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF12: quarto ocupado não pode ir para manutenção (4xx)")
-    @Disabled("BUG: RoomService lança IllegalStateException, que não tem handler -> 500 em vez de 409/422.")
     void occupiedRoomCannotGoToMaintenance() throws Exception {
         Room room = roomIn(RoomStatus.OCCUPIED);
 
@@ -105,7 +103,6 @@ class RoomStatusFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF12: quarto inexistente retorna 404")
-    @Disabled("BUG: RoomService lança jakarta.persistence.EntityNotFoundException, sem handler -> 500.")
     void roomNotFound() throws Exception {
         doPatch("/room/9999/update-status", receptionToken(), "{\"status\":\"AVAILABLE\"}")
                 .andExpect(status().isNotFound());
@@ -113,8 +110,6 @@ class RoomStatusFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF12: a recepção não consegue marcar manualmente um quarto como ocupado")
-    @Disabled("BUG: o enunciado só prevê 'liberar após limpeza' e 'manutenção (só quarto livre ou em limpeza)', "
-            + "mas updateRoomStatus aceita qualquer destino (ex.: AVAILABLE -> OCCUPIED, MAINTENANCE -> CLEANING).")
     void receptionCannotSetOccupiedManually() throws Exception {
         Room room = roomIn(RoomStatus.AVAILABLE);
 

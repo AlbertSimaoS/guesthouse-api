@@ -58,4 +58,24 @@ class GlobalExceptionHandlerTest {
     void businessException() {
         assertThat(new BusinessException("regra").getMessage()).isEqualTo("regra");
     }
+
+    @Test
+    @DisplayName("regra de negócio violada (IllegalStateException) -> 409")
+    void illegalState() {
+        assertResponse(handler.handleIllegalState(new IllegalStateException("estado")), 409, "estado");
+    }
+
+    @Test
+    @DisplayName("EntityNotFoundException -> 404")
+    void entityNotFound() {
+        assertResponse(handler.handleEntityNotFound(new jakarta.persistence.EntityNotFoundException("sumiu")),
+                404, "sumiu");
+    }
+
+    @Test
+    @DisplayName("AccessDeniedException -> 403")
+    void accessDenied() {
+        assertResponse(handler.handleAccessDenied(
+                new org.springframework.security.access.AccessDeniedException("negado")), 403, "negado");
+    }
 }

@@ -7,7 +7,6 @@ import br.ifsp.guesthouse.model.enums.PaymentStatus;
 import br.ifsp.guesthouse.model.enums.PaymentType;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -18,9 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * RF08 - cancelamento: até 7 dias antes da entrada o sinal é devolvido; depois, fica retido.
  *
- * Quase todos os cenários estão desabilitados porque o endpoint de cancelamento está quebrado
- * (NullPointerException em toda reserva sem quarto atribuído, ou seja, antes do check-in).
- * Remova o @Disabled depois de corrigir o bug.
+ * O hóspede cancela apenas as próprias reservas; a recepção cancela qualquer uma.
  */
 @DisplayName("RF08 - Cancelamento")
 class CancellationFunctionalTest extends AbstractFunctionalTest {
@@ -63,7 +60,6 @@ class CancellationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF08: faltando mais de 7 dias, o sinal é devolvido integralmente")
-    @Disabled(BUG_NPE_CANCEL)
     void refundWhenMoreThan7DaysBefore() throws Exception {
         givenCatalog();
         Reservation reservation = reservation(10, ReservationStatus.CONFIRMED, PaymentStatus.CONFIRMED);
@@ -77,7 +73,6 @@ class CancellationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF08: faltando exatamente 7 dias, o sinal ainda é devolvido")
-    @Disabled(BUG_NPE_CANCEL)
     void refundExactly7DaysBefore() throws Exception {
         givenCatalog();
         Reservation reservation = reservation(7, ReservationStatus.CONFIRMED, PaymentStatus.CONFIRMED);
@@ -90,7 +85,6 @@ class CancellationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF08: faltando menos de 7 dias, o sinal fica retido")
-    @Disabled(BUG_NPE_CANCEL)
     void depositRetainedWhenLessThan7DaysBefore() throws Exception {
         givenCatalog();
         Reservation reservation = reservation(6, ReservationStatus.CONFIRMED, PaymentStatus.CONFIRMED);
@@ -104,7 +98,6 @@ class CancellationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF08: reserva pendente (sinal não pago) é cancelada e o pagamento é cancelado")
-    @Disabled(BUG_NPE_CANCEL)
     void cancelPendingReservation() throws Exception {
         givenCatalog();
         Reservation reservation = reservation(3, ReservationStatus.PENDING, PaymentStatus.PENDING);
@@ -119,7 +112,6 @@ class CancellationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF08: depois de cancelada, a noite volta a ficar disponível")
-    @Disabled(BUG_NPE_CANCEL)
     void cancelledReservationFreesAvailability() throws Exception {
         givenCatalog();
         Reservation reservation = reservation(10, ReservationStatus.CONFIRMED, PaymentStatus.CONFIRMED);
@@ -133,7 +125,6 @@ class CancellationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF08: não cancela reserva já cancelada ou finalizada (4xx)")
-    @Disabled("BUG: IllegalStateException não tem handler no GlobalExceptionHandler -> 500 em vez de 409/422.")
     void cannotCancelTwice() throws Exception {
         givenCatalog();
         Reservation cancelled = reservation(10, ReservationStatus.CANCELLED, PaymentStatus.REFUNDED);
@@ -144,8 +135,6 @@ class CancellationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("Regra geral: o hóspede só cancela as próprias reservas")
-    @Disabled("BUG: ReservationService.cancelReservation não confere se a reserva pertence ao usuário "
-            + "autenticado; qualquer hóspede cancela a reserva de outro.")
     void guestCannotCancelSomeoneElsesReservation() throws Exception {
         givenCatalog();
         Reservation reservation = reservation(10, ReservationStatus.CONFIRMED, PaymentStatus.CONFIRMED);

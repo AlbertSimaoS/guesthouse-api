@@ -7,7 +7,6 @@ import br.ifsp.guesthouse.model.enums.PaymentStatus;
 import br.ifsp.guesthouse.model.enums.PaymentType;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -18,7 +17,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** RF06 (reservar) e a parte de RF13 que existe na API (o hóspede vê as próprias reservas). */
+/** RF06 (reservar) e RF13 (GET /reservation/my-reservations: o hóspede vê as próprias reservas). */
 @DisplayName("RF06/RF13 - Reservas")
 class ReservationFunctionalTest extends AbstractFunctionalTest {
 
@@ -239,16 +238,7 @@ class ReservationFunctionalTest extends AbstractFunctionalTest {
     // ----------------------------------------------------- defeitos conhecidos
 
     @Test
-    @DisplayName("RF13: o hóspede vê o extrato da conta (diárias + consumos - sinal) durante a estadia")
-    @Disabled("NÃO IMPLEMENTADO: não existe endpoint de extrato da conta (RF13) nem entidade de consumo (RF10).")
-    void accountStatement() {
-        // quando existir o endpoint, validar: diárias + consumos - sinal, e que o hóspede só vê o próprio extrato
-    }
-
-    @Test
     @DisplayName("RF06: estadia que cruza duas temporadas é aceita")
-    @Disabled("BUG: AvailabilityService.validateHighSeasonMinimumStay usa um Optional<Season> para um intervalo; "
-            + "com 2 temporadas no período o Spring Data lança IncorrectResultSizeDataAccessException (500).")
     void stayAcrossTwoSeasons() throws Exception {
         givenStandardRoom(1, "100.00");
         createSeason("Feriado", day(10), day(11), "1.3");
@@ -261,8 +251,6 @@ class ReservationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF06: 1 noite imediatamente antes da alta temporada não sofre a estadia mínima")
-    @Disabled("BUG: validateHighSeasonMinimumStay compara season.start <= checkOut, então a noite anterior ao "
-            + "início da alta temporada (checkOut = início da temporada) é tratada como alta temporada.")
     void nightBeforeHighSeasonIsNotHighSeason() throws Exception {
         givenStandardRoom(1, "100.00");
         createSeason("Alta Temporada", day(10), day(20), "1.5");

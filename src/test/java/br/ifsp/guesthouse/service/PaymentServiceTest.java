@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +54,7 @@ class PaymentServiceTest {
         Payment payment = new Payment();
         payment.setReservation(reservation());
         payment.setType(type);
-        payment.setAmount(new java.math.BigDecimal("60.00"));
+        payment.setAmount(new BigDecimal("60.00"));
         payment.setStatus(status);
         return payment;
     }
@@ -157,5 +158,89 @@ class PaymentServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
         assertThatThrownBy(() -> paymentService.cancelDepositPayment(2L, true))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    // ------------------------------------------- estadia: check-in/check-out/no-show
+
+    @Test
+    @DisplayName("getConfirmedDeposit: devolve o sinal confirmado")
+    void returnsConfirmedDeposit() {
+        Payment deposit = payment(PaymentType.DEPOSIT, PaymentStatus.CONFIRMED);
+        when(paymentRepository.findByReservationIdAndType(5L, PaymentType.DEPOSIT)).thenReturn(Optional.of(deposit));
+
+        assertThat(paymentService.getConfirmedDeposit(5L)).isSameAs(deposit);
+    }
+
+    @Test
+    @DisplayName("getConfirmedDeposit: recusa sinal inexistente ou não confirmado")
+    void confirmedDepositRejections() {
+        when(paymentRepository.findByReservationIdAndType(1L, PaymentType.DEPOSIT)).thenReturn(Optional.empty());
+        when(paymentRepository.findByReservationIdAndType(2L, PaymentType.DEPOSIT))
+                .thenReturn(Optional.of(payment(PaymentType.DEPOSIT, PaymentStatus.PENDING)));
+
+        assertThatThrownBy(() -> paymentService.getConfirmedDeposit(1L)).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> paymentService.getConfirmedDeposit(2L)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("retainDepositPayment: marca o sinal confirmado como RETIDO")
+    void retainsConfirmedDeposit() {
+        Payment deposit = payment(PaymentType.DEPOSIT, PaymentStatus.CONFIRMED);
+        when(paymentRepository.findByReservationIdAndType(5L, PaymentType.DEPOSIT)).thenReturn(Optional.of(deposit));
+
+        paymentService.retainDepositPayment(5L);
+
+        assertThat(deposit.getStatus()).isEqualTo(PaymentStatus.RETAINED);
+        verify(paymentRepository).save(deposit);
+    }
+
+    @Test
+    @DisplayName("retainDepositPayment: recusa sinal inexistente ou não confirmado")
+    void retainRejections() {
+        when(paymentRepository.findByReservationIdAndType(1L, PaymentType.DEPOSIT)).thenReturn(Optional.empty());
+        when(paymentRepository.findByReservationIdAndType(2L, PaymentType.DEPOSIT))
+                .thenReturn(Optional.of(payment(PaymentType.DEPOSIT, PaymentStatus.PENDING)));
+
+        assertThatThrownBy(() -> paymentService.retainDepositPayment(1L)).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> paymentService.retainDepositPayment(2L)).isInstanceOf(IllegalStateException.class);
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createCheckoutPayment: cria pagamento CHECKOUT pendente com o valor informado")
+    void createsCheckoutPayment() {
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        Reservation reservation = reservation();
+
+        Payment payment = paymentService.createCheckoutPayment(reservation, new BigDecimal("190.00"));
+
+        assertThat(payment.getType()).isEqualTo(PaymentType.CHECKOUT);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(payment.getAmount()).isEqualByComparingTo("190.00");
+        assertThat(payment.getReservation()).isSameAs(reservation);
+    }
+
+    @Test
+    @DisplayName("createCheckoutPayment: recusa valor nulo, zero ou negativo")
+    void checkoutPaymentRejectsInvalidAmounts() {
+        Reservation reservation = reservation();
+
+        assertThatThrownBy(() -> paymentService.createCheckoutPayment(reservation, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> paymentService.createCheckoutPayment(reservation, BigDecimal.ZERO))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> paymentService.createCheckoutPayment(reservation, new BigDecimal("-1")))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("checkoutPaymentExists: consulta o repositório")
+    void checkoutPaymentExists() {
+        when(paymentRepository.existsByReservationIdAndType(5L, PaymentType.CHECKOUT)).thenReturn(true);
+        when(paymentRepository.existsByReservationIdAndType(6L, PaymentType.CHECKOUT)).thenReturn(false);
+
+        assertThat(paymentService.checkoutPaymentExists(5L)).isTrue();
+        assertThat(paymentService.checkoutPaymentExists(6L)).isFalse();
     }
 }

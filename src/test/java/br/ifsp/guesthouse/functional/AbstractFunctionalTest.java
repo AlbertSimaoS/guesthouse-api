@@ -57,10 +57,6 @@ public abstract class AbstractFunctionalTest {
 
     protected static final String PASSWORD = "senha12345";
 
-    protected static final String BUG_NPE_CANCEL =
-            "BUG: ReservationService.cancelReservation faz saved.getRoom().getId(), mas room é null "
-                    + "até o check-in -> NullPointerException (500). Use ReservationResponseDTO.from(saved).";
-
     private static final AtomicLong CPF_SEQ = new AtomicLong(10_000_000_000L);
 
     @Autowired protected MockMvc mockMvc;
@@ -78,6 +74,7 @@ public abstract class AbstractFunctionalTest {
     @BeforeEach
     void cleanDatabase() {
         jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("DELETE FROM consumptions");
         jdbc.execute("DELETE FROM payments");
         jdbc.execute("DELETE FROM reservations");
         jdbc.execute("DELETE FROM password_reset_tokens");

@@ -1,7 +1,6 @@
 package br.ifsp.guesthouse.repository;
 
 import br.ifsp.guesthouse.model.Season;
-import org.hibernate.boot.models.JpaAnnotations;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,7 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface SeasonRepository extends JpaRepository<Season, Long> {
+public interface SeasonRepository extends JpaRepository<Season, Integer> {
     boolean existsByNameIgnoreCase(String name);
 
     @Query("""
@@ -23,6 +22,11 @@ public interface SeasonRepository extends JpaRepository<Season, Long> {
     boolean existsOverlappingSeason(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
+    );
+
+    List<Season> findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDate(
+            LocalDate lastNight,
+            LocalDate firstNight
     );
 
     Optional<Season> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(

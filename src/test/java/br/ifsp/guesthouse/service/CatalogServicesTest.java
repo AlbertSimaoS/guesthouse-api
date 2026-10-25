@@ -158,6 +158,50 @@ class CatalogServicesTest {
             assertThat(occupied.getStatus()).isEqualTo(RoomStatus.OCCUPIED);
             verify(roomRepository, never()).save(any());
         }
+
+        @Test
+        @DisplayName("manutenção: aceita a partir de quarto livre ou em limpeza")
+        void maintenanceFromAvailableOrCleaning() {
+            Room available = TestData.room(7, "103", TestData.roomType(1, "Standard", 2, "100"), RoomStatus.AVAILABLE);
+            Room cleaning = TestData.room(8, "104", TestData.roomType(1, "Standard", 2, "100"), RoomStatus.CLEANING);
+            when(roomRepository.findById(7)).thenReturn(Optional.of(available));
+            when(roomRepository.findById(8)).thenReturn(Optional.of(cleaning));
+
+            service().updateRoomStatus(7, RoomStatus.MAINTENANCE);
+            service().updateRoomStatus(8, RoomStatus.MAINTENANCE);
+
+            assertThat(available.getStatus()).isEqualTo(RoomStatus.MAINTENANCE);
+            assertThat(cleaning.getStatus()).isEqualTo(RoomStatus.MAINTENANCE);
+        }
+
+        @Test
+        @DisplayName("quarto em manutenção pode ser liberado")
+        void maintenanceToAvailable() {
+            Room room = TestData.room(9, "105", TestData.roomType(1, "Standard", 2, "100"), RoomStatus.MAINTENANCE);
+            when(roomRepository.findById(9)).thenReturn(Optional.of(room));
+
+            service().updateRoomStatus(9, RoomStatus.AVAILABLE);
+
+            assertThat(room.getStatus()).isEqualTo(RoomStatus.AVAILABLE);
+        }
+
+        @Test
+        @DisplayName("ocupado e limpeza não podem ser definidos manualmente")
+        void occupiedAndCleaningAreNotManual() {
+            Room available = TestData.room(7, "103", TestData.roomType(1, "Standard", 2, "100"), RoomStatus.AVAILABLE);
+            Room maintenance = TestData.room(9, "105", TestData.roomType(1, "Standard", 2, "100"), RoomStatus.MAINTENANCE);
+            when(roomRepository.findById(7)).thenReturn(Optional.of(available));
+            when(roomRepository.findById(9)).thenReturn(Optional.of(maintenance));
+
+            assertThatThrownBy(() -> service().updateRoomStatus(7, RoomStatus.OCCUPIED))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> service().updateRoomStatus(9, RoomStatus.CLEANING))
+                    .isInstanceOf(IllegalStateException.class);
+
+            assertThat(available.getStatus()).isEqualTo(RoomStatus.AVAILABLE);
+            assertThat(maintenance.getStatus()).isEqualTo(RoomStatus.MAINTENANCE);
+            verify(roomRepository, never()).save(any());
+        }
     }
 
     // ----------------------------------------------------------------- Season

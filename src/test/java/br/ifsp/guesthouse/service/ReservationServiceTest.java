@@ -2,12 +2,15 @@ package br.ifsp.guesthouse.service;
 
 import br.ifsp.guesthouse.TestData;
 import br.ifsp.guesthouse.dto.AvailabilityResponseDTO;
+import br.ifsp.guesthouse.dto.CheckoutResponseDTO;
 import br.ifsp.guesthouse.dto.PageResponseDTO;
 import br.ifsp.guesthouse.dto.PaymentResponseDTO;
 import br.ifsp.guesthouse.dto.ReservationRequestDTO;
 import br.ifsp.guesthouse.dto.ReservationResponseDTO;
 import br.ifsp.guesthouse.exception.ResourceNotFoundException;
+import br.ifsp.guesthouse.model.Payment;
 import br.ifsp.guesthouse.model.Reservation;
+import br.ifsp.guesthouse.model.Room;
 import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.PaymentStatus;
@@ -15,12 +18,13 @@ import br.ifsp.guesthouse.model.enums.PaymentType;
 import br.ifsp.guesthouse.model.enums.Profile;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
+import br.ifsp.guesthouse.repository.ConsumptionRepository;
 import br.ifsp.guesthouse.repository.ReservationRepository;
+import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
 import br.ifsp.guesthouse.repository.UserAccountRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,6 +68,8 @@ class ReservationServiceTest {
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private AvailabilityService availabilityService;
     @Mock private PaymentService paymentService;
+    @Mock private RoomRepository roomRepository;
+    @Mock private ConsumptionRepository consumptionRepository;
 
     private ReservationService service;
 
@@ -74,8 +80,7 @@ class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReservationService(
-                reservationRepository, roomTypeRepository, userAccountRepository, availabilityService, paymentService);
+        service = new ReservationService(reservationRepository, roomTypeRepository,userAccountRepository,availabilityService,paymentService, roomRepository, consumptionRepository);
         guest = TestData.user(1L, "maria@email.com", Profile.GUEST);
         type = TestData.roomType(1, "Standard", 2, "100.00");
         authenticateAs(1L);
@@ -212,23 +217,11 @@ class ReservationServiceTest {
                 10L, 5L, PaymentType.DEPOSIT, new BigDecimal("60.00"), PaymentStatus.CONFIRMED, LocalDateTime.now()));
         when(reservationRepository.findById(5L)).thenReturn(Optional.of(reservation));
 
-        PaymentResponseDTO response = service.updatePaymentStatus(10L, PaymentStatus.CONFIRMED);
+        PaymentResponseDTO response = service.updateReservationStatus(10L, PaymentStatus.CONFIRMED);
 
         assertThat(response.status()).isEqualTo(PaymentStatus.CONFIRMED);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
         verify(reservationRepository).save(reservation);
-    }
-
-    @Test
-    @DisplayName("confirmar um pagamento que não é o sinal não mexe na reserva")
-    void confirmingCheckoutPaymentDoesNotConfirmReservation() {
-        when(paymentService.updatePaymentStatus(10L, PaymentStatus.CONFIRMED)).thenReturn(new PaymentResponseDTO(
-                10L, 5L, PaymentType.CHECKOUT, new BigDecimal("60.00"), PaymentStatus.CONFIRMED, LocalDateTime.now()));
-
-        service.updatePaymentStatus(10L, PaymentStatus.CONFIRMED);
-
-        verify(reservationRepository, never()).findById(anyLong());
-        verify(reservationRepository, never()).save(any());
     }
 
     @Test
@@ -238,7 +231,7 @@ class ReservationServiceTest {
                 10L, 5L, PaymentType.DEPOSIT, new BigDecimal("60.00"), PaymentStatus.CONFIRMED, LocalDateTime.now()));
         when(reservationRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.updatePaymentStatus(10L, PaymentStatus.CONFIRMED))
+        assertThatThrownBy(() -> service.updateReservationStatus(10L, PaymentStatus.CONFIRMED))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -269,7 +262,6 @@ class ReservationServiceTest {
 
     @Test
     @DisplayName("o corte de expiração é de 24 horas")
-    @Disabled("BUG: expirePendingReservations usa LocalDateTime.now().minusHours(0) (comentário 'alterar para 24').")
     void expirationCutoffIs24Hours() {
         when(reservationRepository.findByStatusAndCreatedAtBefore(any(), any())).thenReturn(List.of());
         LocalDateTime before = LocalDateTime.now();
@@ -286,8 +278,6 @@ class ReservationServiceTest {
     private Reservation reservationStartingIn(int days, ReservationStatus status) {
         Reservation reservation = TestData.reservation(
                 5L, guest, type, LocalDate.now().plusDays(days), LocalDate.now().plusDays(days + 2), "200.00", status);
-        // o DTO de resposta do cancelamento exige quarto atribuído (ver teste desabilitado abaixo)
-        reservation.setRoom(TestData.room(3, "101", type, RoomStatus.AVAILABLE));
         when(reservationRepository.findById(5L)).thenReturn(Optional.of(reservation));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> inv.getArgument(0));
         return reservation;
@@ -353,11 +343,10 @@ class ReservationServiceTest {
 
     @Test
     @DisplayName("cancelar reserva ainda sem quarto atribuído (caso normal antes do check-in) funciona")
-    @Disabled("BUG: cancelReservation monta o DTO com saved.getRoom().getId(); room é null antes do check-in -> NPE.")
     void cancelWithoutAssignedRoom() {
         Reservation reservation = reservationStartingIn(10, ReservationStatus.CONFIRMED);
-        reservation.setRoom(null);
 
+        assertThat(reservation.getRoom()).isNull();
         assertThatCode(() -> service.cancelReservation(5L)).doesNotThrowAnyException();
     }
 
@@ -388,5 +377,312 @@ class ReservationServiceTest {
         authenticateAs("abc");
         assertThatThrownBy(() -> service.getMyReservations(PageRequest.of(0, 10)))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ------------------------------------------- RF07/RF11: updateReservationStatus
+
+    private PaymentResponseDTO confirmed(PaymentType paymentType) {
+        return new PaymentResponseDTO(
+                10L, 5L, paymentType, new BigDecimal("60.00"), PaymentStatus.CONFIRMED, LocalDateTime.now());
+    }
+
+    private Reservation reservationWith(ReservationStatus status, Room room) {
+        Reservation reservation = TestData.reservation(5L, guest, type, start, end, "200.00", status);
+        reservation.setRoom(room);
+        when(reservationRepository.findById(5L)).thenReturn(Optional.of(reservation));
+        return reservation;
+    }
+
+    @Test
+    @DisplayName("sinal só confirma reserva PENDENTE")
+    void depositOnlyConfirmsPendingReservation() {
+        when(paymentService.updatePaymentStatus(10L, PaymentStatus.CONFIRMED)).thenReturn(confirmed(PaymentType.DEPOSIT));
+        reservationWith(ReservationStatus.CANCELLED, null);
+
+        assertThatThrownBy(() -> service.updateReservationStatus(10L, PaymentStatus.CONFIRMED))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("pagamento do check-out finaliza a reserva e manda o quarto para limpeza")
+    void checkoutPaymentFinishesReservation() {
+        Room room = TestData.room(3, "101", type, RoomStatus.OCCUPIED);
+        Reservation reservation = reservationWith(ReservationStatus.CHECKED_IN, room);
+        when(paymentService.updatePaymentStatus(10L, PaymentStatus.CONFIRMED)).thenReturn(confirmed(PaymentType.CHECKOUT));
+
+        service.updateReservationStatus(10L, PaymentStatus.CONFIRMED);
+
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.FINISHED);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.CLEANING);
+        verify(roomRepository).save(room);
+        verify(reservationRepository).save(reservation);
+    }
+
+    @Test
+    @DisplayName("pagamento do check-out exige reserva em CHECKED_IN, com quarto ocupado")
+    void checkoutPaymentRejections() {
+        when(paymentService.updatePaymentStatus(10L, PaymentStatus.CONFIRMED)).thenReturn(confirmed(PaymentType.CHECKOUT));
+
+        reservationWith(ReservationStatus.CONFIRMED, null);
+        assertThatThrownBy(() -> service.updateReservationStatus(10L, PaymentStatus.CONFIRMED))
+                .isInstanceOf(IllegalStateException.class);
+
+        reservationWith(ReservationStatus.CHECKED_IN, null);
+        assertThatThrownBy(() -> service.updateReservationStatus(10L, PaymentStatus.CONFIRMED))
+                .isInstanceOf(IllegalStateException.class);
+
+        reservationWith(ReservationStatus.CHECKED_IN, TestData.room(3, "101", type, RoomStatus.CLEANING));
+        assertThatThrownBy(() -> service.updateReservationStatus(10L, PaymentStatus.CONFIRMED))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(roomRepository, never()).save(any());
+    }
+
+    // ------------------------------------------------------------- RF09: check-in
+
+    private Reservation confirmedStartingToday() {
+        Reservation reservation = TestData.reservation(
+                5L, guest, type, LocalDate.now(), LocalDate.now().plusDays(2), "200.00", ReservationStatus.CONFIRMED);
+        when(reservationRepository.findById(5L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> inv.getArgument(0));
+        return reservation;
+    }
+
+    @Test
+    @DisplayName("check-in atribui o quarto livre do tipo reservado, ocupa o quarto e marca CHECKED_IN")
+    void checkInAssignsRoom() {
+        Reservation reservation = confirmedStartingToday();
+        Room room = TestData.room(3, "101", type, RoomStatus.AVAILABLE);
+        when(roomRepository.findById(3)).thenReturn(Optional.of(room));
+
+        ReservationResponseDTO response = service.checkIn(5L, 3);
+
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CHECKED_IN);
+        assertThat(reservation.getRoom()).isSameAs(room);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.OCCUPIED);
+        assertThat(response.status()).isEqualTo(ReservationStatus.CHECKED_IN);
+        assertThat(response.roomId()).isEqualTo(3);
+        verify(roomRepository).save(room);
+    }
+
+    @Test
+    @DisplayName("check-in: reserva inexistente, não confirmada ou fora da data de entrada é recusada")
+    void checkInReservationRejections() {
+        when(reservationRepository.findById(404L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.checkIn(404L, 3)).isInstanceOf(ResourceNotFoundException.class);
+
+        Reservation pending = confirmedStartingToday();
+        pending.setStatus(ReservationStatus.PENDING);
+        assertThatThrownBy(() -> service.checkIn(5L, 3)).isInstanceOf(IllegalStateException.class);
+
+        Reservation tomorrow = confirmedStartingToday();
+        tomorrow.setStartDate(LocalDate.now().plusDays(1));
+        assertThatThrownBy(() -> service.checkIn(5L, 3)).isInstanceOf(IllegalStateException.class);
+
+        verify(roomRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("check-in: quarto inexistente, de outro tipo ou indisponível é recusado")
+    void checkInRoomRejections() {
+        confirmedStartingToday();
+
+        when(roomRepository.findById(99)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.checkIn(5L, 99)).isInstanceOf(ResourceNotFoundException.class);
+
+        RoomType other = TestData.roomType(2, "Suite", 3, "300.00");
+        when(roomRepository.findById(4)).thenReturn(Optional.of(TestData.room(4, "201", other, RoomStatus.AVAILABLE)));
+        assertThatThrownBy(() -> service.checkIn(5L, 4)).isInstanceOf(IllegalArgumentException.class);
+
+        when(roomRepository.findById(5)).thenReturn(Optional.of(TestData.room(5, "102", type, RoomStatus.CLEANING)));
+        assertThatThrownBy(() -> service.checkIn(5L, 5)).isInstanceOf(IllegalStateException.class);
+
+        verify(roomRepository, never()).save(any());
+    }
+
+    // ------------------------------------------------------------- RF09: no-show
+
+    @Test
+    @DisplayName("não comparecimento: confirmada sem check-in vira NO_SHOW e o sinal fica retido")
+    void processNoShows() {
+        Reservation a = TestData.reservation(1L, guest, type, LocalDate.now().minusDays(1),
+                LocalDate.now().plusDays(1), "200.00", ReservationStatus.CONFIRMED);
+        Reservation b = TestData.reservation(2L, guest, type, LocalDate.now().minusDays(3),
+                LocalDate.now().minusDays(1), "200.00", ReservationStatus.CONFIRMED);
+        when(reservationRepository.findByStatusAndStartDateBefore(ReservationStatus.CONFIRMED, LocalDate.now()))
+                .thenReturn(List.of(a, b));
+
+        int processed = service.processNoShows();
+
+        assertThat(processed).isEqualTo(2);
+        assertThat(a.getStatus()).isEqualTo(ReservationStatus.NO_SHOW);
+        assertThat(b.getStatus()).isEqualTo(ReservationStatus.NO_SHOW);
+        verify(paymentService).retainDepositPayment(1L);
+        verify(paymentService).retainDepositPayment(2L);
+    }
+
+    @Test
+    @DisplayName("sem não comparecimentos devolve zero")
+    void noNoShows() {
+        when(reservationRepository.findByStatusAndStartDateBefore(any(), any())).thenReturn(List.of());
+
+        assertThat(service.processNoShows()).isZero();
+        verify(paymentService, never()).retainDepositPayment(anyLong());
+    }
+
+    // ------------------------------------------------------------ RF10/RF11: check-out
+
+    private Reservation checkedIn(LocalDate from, LocalDate to) {
+        Reservation reservation = TestData.reservation(5L, guest, type, from, to, "200.00", ReservationStatus.CHECKED_IN);
+        reservation.setRoom(TestData.room(3, "101", type, RoomStatus.OCCUPIED));
+        when(reservationRepository.findById(5L)).thenReturn(Optional.of(reservation));
+        return reservation;
+    }
+
+    private void givenCheckoutData(String consumptions, String deposit) {
+        when(consumptionRepository.sumConsumptionsByReservationId(5L)).thenReturn(new BigDecimal(consumptions));
+        Payment depositPayment = new Payment();
+        depositPayment.setAmount(new BigDecimal(deposit));
+        when(paymentService.getConfirmedDeposit(5L)).thenReturn(depositPayment);
+        when(paymentService.createCheckoutPayment(any(), any())).thenAnswer(inv -> {
+            Payment payment = new Payment();
+            payment.setAmount(inv.getArgument(1));
+            return payment;
+        });
+    }
+
+    @Test
+    @DisplayName("check-out na data prevista: diárias + consumos - sinal, sem multa")
+    void regularCheckout() {
+        LocalDate today = LocalDate.now();
+        Reservation reservation = checkedIn(today.minusDays(2), today);
+        givenCheckoutData("50.00", "60.00");
+
+        CheckoutResponseDTO dto = service.checkOut(5L);
+
+        assertThat(dto.earlyCheckout()).isFalse();
+        assertThat(dto.stayPrice()).isEqualByComparingTo("200.00");
+        assertThat(dto.penalty()).isEqualByComparingTo("0");
+        assertThat(dto.consumptionTotal()).isEqualByComparingTo("50.00");
+        assertThat(dto.depositAmount()).isEqualByComparingTo("60.00");
+        assertThat(dto.totalDue()).isEqualByComparingTo("250.00");
+        assertThat(dto.checkoutAmount()).isEqualByComparingTo("190.00");
+        assertThat(dto.checkoutDate()).isEqualTo(today);
+        assertThat(dto.reservationId()).isEqualTo(5L);
+        verify(paymentService).createCheckoutPayment(eq(reservation), any());
+    }
+
+    @Test
+    @DisplayName("saída antecipada: cobra as diárias usadas + 1 diária de multa")
+    void earlyCheckout() {
+        LocalDate today = LocalDate.now();
+        checkedIn(today.minusDays(2), today.plusDays(3));
+        givenCheckoutData("50.00", "60.00");
+        // 2 diárias usadas (início -> hoje) = 200; multa = 1 diária (amanhã) = 100
+        when(availabilityService.calculateStayPrice(eq(type), eq(today.minusDays(2)), eq(today)))
+                .thenReturn(new BigDecimal("200.00"));
+        when(availabilityService.calculateStayPrice(eq(type), eq(today.plusDays(1)), eq(today.plusDays(2))))
+                .thenReturn(new BigDecimal("100.00"));
+
+        CheckoutResponseDTO dto = service.checkOut(5L);
+
+        assertThat(dto.earlyCheckout()).isTrue();
+        assertThat(dto.stayPrice()).isEqualByComparingTo("200.00");
+        assertThat(dto.penalty()).isEqualByComparingTo("100.00");
+        // 200 + 50 + 100 = 350; menos sinal 60 = 290
+        assertThat(dto.totalDue()).isEqualByComparingTo("350.00");
+        assertThat(dto.checkoutAmount()).isEqualByComparingTo("290.00");
+    }
+
+    @Test
+    @DisplayName("saída antecipada no mesmo dia do check-in cobra pelo menos 1 diária")
+    void earlyCheckoutSameDayChargesOneNight() {
+        LocalDate today = LocalDate.now();
+        checkedIn(today, today.plusDays(2));
+        givenCheckoutData("0.00", "30.00");
+        when(availabilityService.calculateStayPrice(eq(type), eq(today), eq(today.plusDays(1))))
+                .thenReturn(new BigDecimal("100.00"));
+        when(availabilityService.calculateStayPrice(eq(type), eq(today.plusDays(1)), eq(today.plusDays(2))))
+                .thenReturn(new BigDecimal("100.00"));
+
+        CheckoutResponseDTO dto = service.checkOut(5L);
+
+        assertThat(dto.stayPrice()).isEqualByComparingTo("100.00");
+        assertThat(dto.penalty()).isEqualByComparingTo("100.00");
+        assertThat(dto.checkoutAmount()).isEqualByComparingTo("170.00");
+    }
+
+    @Test
+    @DisplayName("check-out: reserva inexistente, fora de CHECKED_IN ou sem quarto é recusada")
+    void checkoutRejections() {
+        when(reservationRepository.findById(404L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.checkOut(404L)).isInstanceOf(ResourceNotFoundException.class);
+
+        Reservation confirmed = checkedIn(LocalDate.now().minusDays(1), LocalDate.now());
+        confirmed.setStatus(ReservationStatus.CONFIRMED);
+        assertThatThrownBy(() -> service.checkOut(5L)).isInstanceOf(IllegalStateException.class);
+
+        Reservation noRoom = checkedIn(LocalDate.now().minusDays(1), LocalDate.now());
+        noRoom.setRoom(null);
+        assertThatThrownBy(() -> service.checkOut(5L)).isInstanceOf(IllegalStateException.class);
+
+        verify(paymentService, never()).createCheckoutPayment(any(), any());
+    }
+
+    @Test
+    @DisplayName("check-out com saldo zero ou negativo (sinal cobre tudo) é recusado pelo service")
+    void checkoutWithNonPositiveBalance() {
+        LocalDate today = LocalDate.now();
+        checkedIn(today.minusDays(2), today);
+        givenCheckoutData("0.00", "300.00");
+
+        assertThatThrownBy(() -> service.checkOut(5L)).isInstanceOf(IllegalStateException.class);
+        verify(paymentService, never()).createCheckoutPayment(any(), any());
+    }
+
+    // ------------------------------------------------- regras adicionais
+
+    private void authenticateAs(Object principal, String role) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority(role))));
+    }
+
+    @Test
+    @DisplayName("cancelar: o hóspede não cancela a reserva de outro hóspede")
+    void guestCannotCancelSomeoneElsesReservation() {
+        Reservation reservation = reservationStartingIn(10, ReservationStatus.CONFIRMED);
+        authenticateAs(99L, "ROLE_GUEST");
+
+        assertThatThrownBy(() -> service.cancelReservation(5L))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+        verify(paymentService, never()).cancelDepositPayment(anyLong(), anyBoolean());
+        verify(reservationRepository, never()).save(any(Reservation.class));
+    }
+
+    @Test
+    @DisplayName("cancelar: a recepção cancela a reserva de qualquer hóspede")
+    void receptionCanCancelAnyReservation() {
+        reservationStartingIn(10, ReservationStatus.CONFIRMED);
+        authenticateAs(99L, "ROLE_RECEPTION");
+
+        assertThat(service.cancelReservation(5L).status()).isEqualTo(ReservationStatus.CANCELLED);
+        verify(paymentService).cancelDepositPayment(5L, true);
+    }
+
+    @Test
+    @DisplayName("check-out: estadia sem consumos (soma nula) não causa NullPointerException")
+    void checkoutWithoutConsumptions() {
+        LocalDate today = LocalDate.now();
+        checkedIn(today.minusDays(2), today);
+        givenCheckoutData("0.00", "60.00");
+        when(consumptionRepository.sumConsumptionsByReservationId(5L)).thenReturn(null);
+
+        CheckoutResponseDTO response = service.checkOut(5L);
+
+        assertThat(response.consumptionTotal()).isEqualByComparingTo("0.00");
+        assertThat(response.totalDue()).isEqualByComparingTo("200.00");
+        assertThat(response.checkoutAmount()).isEqualByComparingTo("140.00");
     }
 }

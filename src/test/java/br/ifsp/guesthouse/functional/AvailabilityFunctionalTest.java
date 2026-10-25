@@ -4,7 +4,6 @@ import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -176,8 +175,6 @@ class AvailabilityFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF05: quarto em manutenção não conta na disponibilidade")
-    @Disabled("BUG: o enunciado define disponibilidade como quartos FORA DE MANUTENÇÃO menos reservas, mas "
-            + "RoomTypeRepository.findAvailableRoomTypes e RoomRepository.countByType contam todos os quartos.")
     void maintenanceRoomsAreNotCounted() throws Exception {
         RoomType standard = createRoomType("Standard", 2, "100.00");
         createRoom("101", standard, RoomStatus.MAINTENANCE);
@@ -193,9 +190,6 @@ class AvailabilityFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF05: estadia que começa no dia em que outra termina (check-out = check-in) está disponível")
-    @Disabled("BUG: RoomTypeRepository.findAvailableRoomTypes usa startDate <= :endDate AND endDate >= :startDate "
-            + "(limites inclusivos), então a noite da saída é tratada como ocupada. "
-            + "AvailabilityService/ReservationRepository.countBlockingReservations usam < e > corretamente.")
     void backToBackStaysAreAvailable() throws Exception {
         UserAccount guest = createGuest("hospede@email.com");
         RoomType standard = createRoomType("Standard", 2, "100.00");
@@ -209,8 +203,6 @@ class AvailabilityFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF05: a disponibilidade é por noite (duas reservas em sequência não esgotam 2 quartos)")
-    @Disabled("BUG: a disponibilidade soma as reservas que tocam o período em vez de calcular o máximo "
-            + "de quartos ocupados em cada noite.")
     void availabilityIsEvaluatedPerNight() throws Exception {
         UserAccount guest = createGuest("hospede@email.com");
         RoomType standard = createRoomType("Standard", 2, "100.00");

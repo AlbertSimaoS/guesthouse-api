@@ -8,7 +8,6 @@ import br.ifsp.guesthouse.model.enums.PaymentStatus;
 import br.ifsp.guesthouse.model.enums.PaymentType;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.model.enums.RoomStatus;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -54,7 +53,7 @@ class DepositAndExpirationFunctionalTest extends AbstractFunctionalTest {
         Reservation reservation = pendingReservationWithDeposit();
         String reception = receptionToken();
 
-        doPatch("/payment/" + depositId(reservation), reception, "{\"status\":\"CONFIRMED\"}")
+        doPatch("/payments/" + depositId(reservation), reception, "{\"status\":\"CONFIRMED\"}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.type").value("DEPOSIT"))
@@ -82,7 +81,7 @@ class DepositAndExpirationFunctionalTest extends AbstractFunctionalTest {
                 .findByReservationIdAndType(reservationId.longValue(), PaymentType.DEPOSIT)
                 .orElseThrow()
                 .getId();
-        doPatch("/payment/" + paymentId, reception, "{\"status\":\"CONFIRMED\"}").andExpect(status().isOk());
+        doPatch("/payments/" + paymentId, reception, "{\"status\":\"CONFIRMED\"}").andExpect(status().isOk());
 
         doGet("/reservation/my-reservations", guestToken)
                 .andExpect(status().isOk())
@@ -95,7 +94,7 @@ class DepositAndExpirationFunctionalTest extends AbstractFunctionalTest {
         givenCatalog();
         Reservation reservation = pendingReservationWithDeposit();
         String reception = receptionToken();
-        String url = "/payment/" + depositId(reservation);
+        String url = "/payments/" + depositId(reservation);
 
         doPatch(url, reception, "{\"status\":\"REFUNDED\"}").andExpect(status().isBadRequest());
         doPatch(url, reception, "{\"status\":\"BANANA\"}").andExpect(status().isBadRequest());
@@ -108,37 +107,33 @@ class DepositAndExpirationFunctionalTest extends AbstractFunctionalTest {
     @Test
     @DisplayName("RF07: pagamento inexistente retorna 404")
     void paymentNotFound() throws Exception {
-        doPatch("/payment/9999", receptionToken(), "{\"status\":\"CONFIRMED\"}")
+        doPatch("/payments/9999", receptionToken(), "{\"status\":\"CONFIRMED\"}")
                 .andExpect(status().isNotFound());
     }
 
     @Test
     @DisplayName("RF07: sem token a rota retorna 401")
     void paymentRequiresAuthentication() throws Exception {
-        doPatch("/payment/1", null, "{\"status\":\"CONFIRMED\"}").andExpect(status().isUnauthorized());
+        doPatch("/payments/1", null, "{\"status\":\"CONFIRMED\"}").andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("RF07: o hóspede NÃO pode registrar o próprio sinal (403)")
-    @Disabled("BUG: SecurityConfig protege \"/payments/*\" (plural) mas o controller é \"/payment/{id}\"; "
-            + "a rota cai em anyRequest().authenticated() e qualquer hóspede consegue confirmar o sinal.")
     void guestCannotRegisterDeposit() throws Exception {
         givenCatalog();
         Reservation reservation = pendingReservationWithDeposit();
 
-        doPatch("/payment/" + depositId(reservation), login("hospede@email.com"), "{\"status\":\"CONFIRMED\"}")
+        doPatch("/payments/" + depositId(reservation), login("hospede@email.com"), "{\"status\":\"CONFIRMED\"}")
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @DisplayName("RF07: registrar o sinal duas vezes é rejeitado com 4xx")
-    @Disabled("BUG: PaymentService lança IllegalStateException e o GlobalExceptionHandler não trata -> 500. "
-            + "Deveria ser 409/422.")
     void depositCannotBeRegisteredTwice() throws Exception {
         givenCatalog();
         Reservation reservation = pendingReservationWithDeposit();
         String reception = receptionToken();
-        String url = "/payment/" + depositId(reservation);
+        String url = "/payments/" + depositId(reservation);
 
         doPatch(url, reception, "{\"status\":\"CONFIRMED\"}").andExpect(status().isOk());
         doPatch(url, reception, "{\"status\":\"CONFIRMED\"}").andExpect(status().is4xxClientError());
@@ -206,8 +201,6 @@ class DepositAndExpirationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF07: reserva pendente há menos de 24h NÃO expira")
-    @Disabled("BUG: ReservationService.expirePendingReservations usa LocalDateTime.now().minusHours(0) "
-            + "(há um comentário 'alterar para 24'). Toda reserva pendente expira imediatamente.")
     void recentPendingReservationsDoNotExpire() throws Exception {
         givenCatalog();
         Reservation recent = pendingReservationWithDeposit();
@@ -223,8 +216,6 @@ class DepositAndExpirationFunctionalTest extends AbstractFunctionalTest {
 
     @Test
     @DisplayName("RF07: só a recepção processa as expiradas (hóspede recebe 403)")
-    @Disabled("BUG: PATCH /reservation/expired não está restrita a RECEPTION no SecurityConfig; "
-            + "qualquer usuário autenticado dispara a expiração.")
     void onlyReceptionProcessesExpired() throws Exception {
         doPatch("/reservation/expired", guestToken("hospede@email.com"), null)
                 .andExpect(status().isForbidden());
