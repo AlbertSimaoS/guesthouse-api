@@ -18,6 +18,7 @@ Projeto da avaliação GRUAPIM (Tema 9) – IFSP Guarulhos.
 
 - [Tecnologias](#tecnologias)
 - [Como rodar](#como-rodar)
+- [Executando com Docker](#-executando-com-docker)
 - [Dados iniciais (seed)](#dados-iniciais-seed)
 - [Usuários de teste](#usuários-de-teste)
 - [Autenticação e autorização](#autenticação-e-autorização)
@@ -34,6 +35,8 @@ Projeto da avaliação GRUAPIM (Tema 9) – IFSP Guarulhos.
 - Agendadores (`@Scheduled`): marcação de *no-show* (todo dia à 00:00, fuso `America/Sao_Paulo`) e atualização do status dos quartos (a cada 5 minutos)
 
 ## Como rodar
+
+> Prefere não instalar Java e MySQL? Veja a seção [Executando com Docker](#-executando-com-docker).
 
 ### 1. Pré-requisitos
 
@@ -96,6 +99,168 @@ A API sobe em `http://localhost:8080`.
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 
 Para chamar endpoints protegidos no Swagger, faça login em `POST /auth/login`, clique em **Authorize** e informe o `token` retornado.
+
+## 🐳 Executando com Docker
+
+A aplicação pode ser executada em containers Docker, incluindo a API Spring Boot e o banco de dados MySQL. Essa configuração facilita a preparação do ambiente de execução sem precisar instalar Java e MySQL diretamente na máquina para executar a aplicação.
+
+### 1. Pré-requisitos
+
+Antes de começar, instale:
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — para Windows, com o mecanismo Docker em execução.
+- [Git](https://git-scm.com/) — para clonar o repositório, caso necessário.
+
+### 2. Clonar o repositório
+
+```bash
+git clone <URL_DO_REPOSITORIO>
+cd guesthouse-api
+```
+
+Substitua `<URL_DO_REPOSITORIO>` pela URL do repositório Git.
+
+Se você já possui o projeto localmente, navegue até a pasta raiz, onde estão o `Dockerfile`, o `docker-compose.yml` e o `pom.xml`.
+
+### 3. Configurar as variáveis de ambiente
+
+O arquivo `docker-compose.yml` utiliza variáveis de ambiente para configurar o banco de dados:
+
+```yaml
+MYSQL_DATABASE: ${DB_NAME:-guesthouse}
+MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+```
+
+Opcionalmente, crie um arquivo `.env` na raiz do projeto:
+
+```dotenv
+DB_NAME=guesthouse
+DB_PASSWORD=uma_senha_local
+```
+
+Se as variáveis não forem definidas, os valores padrão serão `guesthouse` para o banco de dados e `root` para a senha.
+
+> **Importante:** os valores padrão são destinados ao desenvolvimento local. Utilize credenciais fortes em ambientes de produção e não versione senhas reais no Git.
+
+### 4. Construir as imagens Docker
+
+Na raiz do projeto, execute:
+
+```bash
+docker compose build
+```
+
+Esse comando constrói a imagem da API a partir do `Dockerfile`. A imagem do MySQL será obtida do Docker Hub quando necessário.
+
+### 5. Iniciar a aplicação
+
+Execute:
+
+```bash
+docker compose up -d
+```
+
+O Docker Compose iniciará os serviços definidos no arquivo `docker-compose.yml`:
+
+- **API:** aplicação Spring Boot, disponível na porta `8080`.
+- **MySQL:** banco de dados MySQL 8.4, exposto na porta `3307` do computador e disponível na porta `3306` dentro da rede Docker.
+
+A API utiliza o nome do serviço `db` para se conectar ao MySQL dentro da rede Docker.
+
+### 6. Verificar o estado dos containers
+
+Para verificar se os serviços estão em execução:
+
+```bash
+docker compose ps
+```
+
+O container do MySQL deve apresentar o estado `healthy`, e a API deve permanecer `Up`.
+
+Para consultar os logs:
+
+```bash
+docker compose logs --tail=100
+```
+
+Para acompanhar os logs em tempo real:
+
+```bash
+docker compose logs -f
+```
+
+Pressione `Ctrl + C` para interromper a visualização dos logs. Isso não encerra os containers.
+
+### 7. Acessar a documentação da API
+
+Com a aplicação em execução, abra o Swagger UI:
+
+[http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+
+A documentação permite visualizar os endpoints disponíveis e executar requisições HTTP para testar a API.
+
+### 8. Acessar o banco de dados MySQL
+
+Para abrir o cliente MySQL dentro do container:
+
+```bash
+docker compose exec db mysql -u root -p
+```
+
+Digite a senha configurada para o usuário `root`.
+
+Depois de acessar o prompt `mysql>`, execute:
+
+```sql
+SHOW DATABASES;
+USE guesthouse;
+SHOW TABLES;
+```
+
+Para consultar os registros, utilize o nome de uma tabela existente:
+
+```sql
+SELECT * FROM nome_da_tabela LIMIT 10;
+```
+
+Também é possível conectar uma ferramenta gráfica de banco de dados utilizando:
+
+| Configuração | Valor |
+|---|---|
+| Host | `localhost` |
+| Porta | `3307` |
+| Usuário | `root` |
+| Senha | Valor configurado em `DB_PASSWORD` |
+| Banco de dados | `guesthouse` |
+
+### 9. Parar a aplicação
+
+Para parar e remover os containers e a rede criados pelo Compose:
+
+```bash
+docker compose down
+```
+
+Os dados armazenados no volume persistente do MySQL são mantidos.
+
+Para iniciar novamente:
+
+```bash
+docker compose up -d
+```
+
+> **Atenção:** evite executar `docker compose down -v` se quiser preservar os dados, pois a opção `-v` remove os volumes nomeados associados ao projeto.
+
+### Comandos úteis
+
+| Comando | Finalidade |
+|---|---|
+| `docker compose build` | Constrói a imagem da API. |
+| `docker compose up -d` | Inicia os serviços em segundo plano. |
+| `docker compose ps` | Lista o estado dos serviços. |
+| `docker compose logs -f` | Acompanha os logs em tempo real. |
+| `docker compose restart` | Reinicia os serviços. |
+| `docker compose down` | Para e remove os containers e a rede. |
 
 ## Dados iniciais (seed)
 
