@@ -9,6 +9,7 @@ import br.ifsp.guesthouse.model.RoomType;
 import br.ifsp.guesthouse.model.UserAccount;
 import br.ifsp.guesthouse.model.enums.Profile;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
+import br.ifsp.guesthouse.repository.ConsumptionRepository;
 import br.ifsp.guesthouse.repository.ReservationRepository;
 import br.ifsp.guesthouse.repository.RoomRepository;
 import br.ifsp.guesthouse.repository.RoomTypeRepository;
@@ -38,6 +39,7 @@ class ReportServiceTest {
     @Mock private ReservationRepository reservationRepository;
     @Mock private RoomRepository roomRepository;
     @Mock private RoomTypeRepository roomTypeRepository;
+    @Mock private ConsumptionRepository consumptionRepository;
     @InjectMocks private ReportService service;
 
     private final LocalDate d0 = LocalDate.of(2026, 12, 1);
@@ -106,6 +108,24 @@ class ReportServiceTest {
         assertThat(report.get(0).totalDailyRates()).isEqualByComparingTo("500.00");
         assertThat(report.get(0).totalRevenue()).isEqualByComparingTo("500.00");
         assertThat(report.get(1).totalRevenue()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("receita: os consumos entram separados das diárias; soma nula (sem consumos) vale zero")
+    void revenueIncludesConsumptions() {
+        when(roomTypeRepository.findAll()).thenReturn(List.of(standard));
+        when(reservationRepository.findByRoomTypeIdAndPeriod(eq(1), any(), any(), any())).thenReturn(List.of(
+                res(1, d0, d0.plusDays(2), "200.00", ReservationStatus.CONFIRMED),
+                res(2, d0, d0.plusDays(3), "300.00", ReservationStatus.FINISHED)));
+        when(consumptionRepository.sumConsumptionsByReservationId(1L)).thenReturn(new java.math.BigDecimal("50.00"));
+        when(consumptionRepository.sumConsumptionsByReservationId(2L)).thenReturn(null);
+
+        List<RevenueReportResponseDTO> report = service.getRevenueByRoomType(d0, d0.plusDays(10));
+
+        assertThat(report).hasSize(1);
+        assertThat(report.get(0).totalDailyRates()).isEqualByComparingTo("500.00");
+        assertThat(report.get(0).totalConsumptions()).isEqualByComparingTo("50.00");
+        assertThat(report.get(0).totalRevenue()).isEqualByComparingTo("550.00");
     }
 
     @Test

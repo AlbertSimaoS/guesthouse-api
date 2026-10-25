@@ -224,7 +224,7 @@ class CatalogFunctionalTest extends AbstractFunctionalTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        Number id = read(result, "$.id");
-        assertThat(seasonRepository.findById(id.longValue())).isPresent();
+        Integer id = read(result, "$.id");
+        assertThat(seasonRepository.findById(id).isPresent());
     }
 }

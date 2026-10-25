@@ -9,20 +9,23 @@ import br.ifsp.guesthouse.model.Reservation;
 import br.ifsp.guesthouse.model.enums.ReservationStatus;
 import br.ifsp.guesthouse.repository.ConsumptionRepository;
 import br.ifsp.guesthouse.repository.ReservationRepository;
-import br.ifsp.guesthouse.service.PaymentService;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.access.AccessDeniedException;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Set;
 
 @Service
 public class ConsumptionService {
+
+    // Perfis da equipe que podem consultar consumos de qualquer reserva.
+    private static final Set<String> STAFF_ROLES = Set.of("RECEPTION", "ADMIN");
 
     private final ConsumptionRepository consumptionRepository;
     private final ReservationRepository reservationRepository;
@@ -112,7 +115,8 @@ public class ConsumptionService {
                                 "Reservation not found."
                         ));
 
-        if (!reservation.getGuest().getId().equals(userId)) {
+        if (!isStaff(authentication)
+                && !reservation.getGuest().getId().equals(userId)) {
             throw new AccessDeniedException(
                     "You cannot access another guest's consumptions."
             );
@@ -124,5 +128,12 @@ public class ConsumptionService {
                         .map(ConsumptionResponseDTO::from);
 
         return PageResponseDTO.from(consumptions);
+    }
+
+    private boolean isStaff(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
+                .anyMatch(STAFF_ROLES::contains);
     }
 }

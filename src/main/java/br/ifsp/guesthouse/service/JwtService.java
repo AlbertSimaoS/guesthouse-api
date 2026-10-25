@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import br.ifsp.guesthouse.model.enums.Profile;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -33,10 +34,20 @@ public class JwtService {
     }
 
     public String generateToken(Long userId) {
+        return generateToken(userId, null);
+    }
+
+    public String generateToken(Long userId, Profile profile) {
         Date now = new Date();
         Date expiresAt = new Date(now.getTime() + expiration);
 
-        return Jwts.builder()
+        var builder = Jwts.builder();
+
+        if (profile != null) {
+            builder.claim("role", profile.name());
+        }
+
+        return builder
                 .subject(userId.toString())
                 .issuedAt(now)
                 .expiration(expiresAt)

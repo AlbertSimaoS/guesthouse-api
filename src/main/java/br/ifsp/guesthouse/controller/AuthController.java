@@ -66,7 +66,7 @@ public class AuthController {
                 request.password()
         );
 
-        String token = jwtService.generateToken(user.getId());
+        String token = jwtService.generateToken(user.getId(), user.getProfile());
 
         LoginResponseDTO response = LoginResponseDTO.fromEntity(
                 token,

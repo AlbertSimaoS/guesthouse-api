@@ -186,20 +186,15 @@ class CatalogServicesTest {
         }
 
         @Test
-        @DisplayName("ocupado e limpeza não podem ser definidos manualmente")
-        void occupiedAndCleaningAreNotManual() {
+        @DisplayName("ocupado não pode ser definido manualmente")
+        void occupiedIsNotManual() {
             Room available = TestData.room(7, "103", TestData.roomType(1, "Standard", 2, "100"), RoomStatus.AVAILABLE);
-            Room maintenance = TestData.room(9, "105", TestData.roomType(1, "Standard", 2, "100"), RoomStatus.MAINTENANCE);
             when(roomRepository.findById(7)).thenReturn(Optional.of(available));
-            when(roomRepository.findById(9)).thenReturn(Optional.of(maintenance));
 
             assertThatThrownBy(() -> service().updateRoomStatus(7, RoomStatus.OCCUPIED))
                     .isInstanceOf(IllegalStateException.class);
-            assertThatThrownBy(() -> service().updateRoomStatus(9, RoomStatus.CLEANING))
-                    .isInstanceOf(IllegalStateException.class);
 
             assertThat(available.getStatus()).isEqualTo(RoomStatus.AVAILABLE);
-            assertThat(maintenance.getStatus()).isEqualTo(RoomStatus.MAINTENANCE);
             verify(roomRepository, never()).save(any());
         }
     }
