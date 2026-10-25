@@ -15,7 +15,8 @@ public class RoomStatusScheduler {
 
     private final RoomRepository roomRepository;
 
-    public RoomStatusScheduler(RoomRepository roomRepository) {
+    public RoomStatusScheduler(RoomRepository roomRepository)
+    {
         this.roomRepository = roomRepository;
     }
 

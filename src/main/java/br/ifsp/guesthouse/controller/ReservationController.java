@@ -1,9 +1,6 @@
 package br.ifsp.guesthouse.controller;
 
-import br.ifsp.guesthouse.dto.ExpiredReservationsResponseDTO;
-import br.ifsp.guesthouse.dto.PageResponseDTO;
-import br.ifsp.guesthouse.dto.ReservationRequestDTO;
-import br.ifsp.guesthouse.dto.ReservationResponseDTO;
+import br.ifsp.guesthouse.dto.*;
 import br.ifsp.guesthouse.service.ReservationService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -88,5 +85,27 @@ public class ReservationController {
         return ResponseEntity.ok(
                 reservationService.getMyReservations(pageable)
         );
+    }
+
+    @PatchMapping("/{id}/check-in")
+    public ResponseEntity<ReservationResponseDTO> checkIn(
+            @PathVariable Long id,
+            @Valid @RequestBody CheckInRequestDTO request
+    ) {
+        ReservationResponseDTO response =
+                reservationService.checkIn(id, request.roomId());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/check-out")
+    public ResponseEntity<CheckoutResponseDTO> checkOut(
+            @PathVariable Long id
+    ) {
+
+        CheckoutResponseDTO response =
+                reservationService.checkOut(id);
+
+        return ResponseEntity.ok(response);
     }
 }
