@@ -231,7 +231,7 @@ public class ReservationService {
         return new ReservationResponseDTO(
                 saved.getId(),
                 saved.getRoomType().getId(),
-                saved.getRoom().getId(),
+                saved.getRoom() != null ? saved.getRoom().getId() : null,
                 saved.getGuest().getId(),
                 saved.getStartDate(),
                 saved.getEndDate(),

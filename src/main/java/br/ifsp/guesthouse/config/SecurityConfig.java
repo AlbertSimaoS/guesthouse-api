@@ -88,7 +88,16 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.PATCH,
                                 "/payments/*",
-                                "/room/*/update-status"
+                                "/room/*/update-status",
+                                "/reservation/expired",
+                                "/reservation/*/cancel"
+                        ).hasRole("RECEPTION")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/report/occupancy",
+                                "/report/revenue",
+                                "/report/daily-movements"
                         ).hasRole("RECEPTION")
 
                         .requestMatchers("/error").permitAll()
